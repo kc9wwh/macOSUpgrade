@@ -35,7 +35,7 @@ Also, if you decide not to stage the macOS Sierra Installer in /Users/Shared/, y
 
 **Stagging macOS Sierra Installer**
 
-In order for this script to work, you will have to have a copy of the macOS Sierra Installer that is available from the Mac App Store located in /Users/Shared/. Once of the easiest ways to achieve this is to package the installer with composer as seen below and deploy the package via Jamf Pro.
+In order for this script to work, you will have to have a copy of the macOS Sierra Installer that is available from the Mac App Store located in /Users/Shared/. One of the easiest ways to achieve this is to package the installer with composer as seen below and deploy the package via Jamf Pro.
 
 ![alt text](/imgs/composer.png)
 
