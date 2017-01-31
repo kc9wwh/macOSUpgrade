@@ -2,7 +2,7 @@
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 #
-# Copyright (c) 2016 Jamf.  All rights reserved.
+# Copyright (c) 2017 Jamf.  All rights reserved.
 #
 #       Redistribution and use in source and binary forms, with or without
 #       modification, are permitted provided that the following conditions are met:
@@ -112,7 +112,7 @@ fi
 if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
 	#Begin Upgrade
 	/Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/startosinstall --volume / --applicationpath /Users/Shared/Install\ macOS\ Sierra.app --nointeraction --pidtosignal $jamfHelperPID &
-    sleep 3
+    	sleep 3
 	exit 0
 else
 	/usr/bin/osascript -e 'Tell application "System Events" to display dialog "Your computer does not meet the requirements necessary to continue.
