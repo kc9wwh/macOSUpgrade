@@ -33,24 +33,20 @@
 # This script was designed to be used in a Self Service policy to ensure specific
 # requirements have been met before proceeding with an inplace upgrade to macOS Sierra, 
 # as well as to address changes Apple has made to the ability to complete macOS upgrades 
-# silently.
+# silently. 
 #
 # REQUIREMENTS:
 #			- Jamf Pro
 #			- macOS Sierra Installer must be staged in /Users/Shared/
 #
-# EXIT CODES:
-#			0 - Everything is Successful
-#			1 - System Requirements were not met
-#			2 - Unkown
 #
-# For more information, visit https://github.com/kc9wwh
+# For more information, visit https://github.com/kc9wwh/macOSUpgrade
 #
 #
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: January 30th, 2017
+# Updated On: February 3rd, 2017
 # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -99,26 +95,25 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-#Launch jamfHelper
-if [[ ${userDialog} == 0 ]]; then
-	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
-	jamfHelperPID=$(echo $!)
-fi
-if [[ ${userDialog} == 1 ]]; then
-	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
-	jamfHelperPID=$(echo $!)
-fi
 
 if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
-	#Begin Upgrade
+    ##Launch jamfHelper
+    if [[ ${userDialog} == 0 ]]; then
+	    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
+	    jamfHelperPID=$(echo $!)
+    fi
+    if [[ ${userDialog} == 1 ]]; then
+	    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
+	    jamfHelperPID=$(echo $!)
+    fi
+
+	##Begin Upgrade
 	/Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/startosinstall --volume / --applicationpath /Users/Shared/Install\ macOS\ Sierra.app --nointeraction --pidtosignal $jamfHelperPID &
-    	sleep 3
-	exit 0
+    /bin/sleep 3
 else
 	/usr/bin/osascript -e 'Tell application "System Events" to display dialog "Your computer does not meet the requirements necessary to continue.
 
 	Please contact the help desk for assistance. " with title "macOS Sierra Upgrade" with text buttons {"OK"} default button "OK" with icon 2'
-	exit 1
 fi
 
-exit 2 #Should never get this far
+exit 0
