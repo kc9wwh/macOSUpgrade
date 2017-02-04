@@ -8,10 +8,6 @@ Requirements:
 * Jamf Pro
 * macOS Sierra Installer must be staged in /Users/Shared/
 
-Exit Codes:
-* 0 - Everything is Successful
-* 1 - System Requirements were not met
-* 2 - Unknown
 
 Written by: Joshua Roskos | Professional Services Engineer | Jamf
 
