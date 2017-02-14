@@ -46,7 +46,7 @@
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: February 3rd, 2017
+# Updated On: February 14th, 2017
 # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -77,19 +77,29 @@ icon=/Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/InstallAssistan
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 ##Check if device is on battery or ac power
-pwrAdapter=$( /usr/bin/pmset -g ac )
-if [[ ${pwrAdapter} == "No adapter attached." ]]; then
-	pwrStatus="ERROR"
-else
+pwrAdapter=$( /usr/bin/pmset -g ps )
+if [[ ${pwrAdapter} == *"AC Power"* ]]; then
 	pwrStatus="OK"
+	/bin/echo "Power Check: OK - AC Power Detected"
+else
+	pwrStatus="ERROR"
+	/bin/echo "Power Check: ERROR - No AC Power Detected"
 fi
 
 ##Check if free space > 15GB
-freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $4}' )
+osMinor=$( /usr/bin/sw_vers -productVersion | awk -F. {'print $2'} )
+if [[ $osMinor -ge 12 ]]; then
+	freeSpace=$( /usr/sbin/diskutil info / | grep "Available Space" | awk '{print $4}' )
+else
+	freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $4}' )
+fi
+
 if [[ ${freeSpace%.*} -ge 15 ]]; then
 	spaceStatus="OK"
+	/bin/echo "Disk Check: OK - ${freeSpace%.*}GB Free Space Detected"
 else
 	spaceStatus="ERROR"
+	/bin/echo "Disk Check: ERROR - ${freeSpace%.*}GB Free Space Detected"
 fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
@@ -99,21 +109,25 @@ fi
 if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     ##Launch jamfHelper
     if [[ ${userDialog} == 0 ]]; then
+    	/bin/echo "Launching jamfHelper as FullScreen..."
 	    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
 	    jamfHelperPID=$(echo $!)
     fi
     if [[ ${userDialog} == 1 ]]; then
+	    /bin/echo "Launching jamfHelper as FullScreen..."
 	    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
 	    jamfHelperPID=$(echo $!)
     fi
 
 	##Begin Upgrade
+	/bin/echo "Launching startosinstall..."
 	/Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/startosinstall --volume / --applicationpath /Users/Shared/Install\ macOS\ Sierra.app --nointeraction --pidtosignal $jamfHelperPID &
     /bin/sleep 3
 else
-	/usr/bin/osascript -e 'Tell application "System Events" to display dialog "Your computer does not meet the requirements necessary to continue.
-
-	Please contact the help desk for assistance. " with title "macOS Sierra Upgrade" with text buttons {"OK"} default button "OK" with icon 2'
+	/bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
+	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for macOS Sierra. Please ensure you are connected to power and that you have at least 15GB of Free Space. 
+	
+	If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
 fi
 
 exit 0
