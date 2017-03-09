@@ -46,7 +46,7 @@
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: February 14th, 2017
+# Updated On: March 9th, 2017
 # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -101,6 +101,51 @@ else
 	spaceStatus="ERROR"
 	/bin/echo "Disk Check: ERROR - ${freeSpace%.*}GB Free Space Detected"
 fi
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# CREATE FIRST BOOT SCRIPT
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+/bin/mkdir /usr/local/jamfps
+
+/bin/echo "#!/bin/bash
+## First Run Script to remove the installer.
+
+## Clean up files
+/bin/rm -fdr /Users/Shared/Install\ macOS\ Sierra.app
+/bin/sleep 2
+
+## Remove LaunchDaemon
+/bin/launchctl unload -w /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+/bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+
+exit 0" > /usr/local/jamfps/finishOSInstall.sh
+
+/usr/sbin/chown root:admin /usr/local/jamfps/finishOSInstall.sh
+/bin/chmod 755 /usr/local/jamfps/finishOSInstall.sh
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# LAUNCH DAEMON
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+/bin/echo "<?xml version="1.0" encoding="UTF-8"?> 
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"> 
+<plist version="1.0"> 
+<dict>
+	<key>Label</key> 
+	<string>com.jamfps.cleanupOSInstall</string> 
+	<key>ProgramArguments</key> 
+	<array> 
+		<string>/usr/local/jamfps/finishOSInstall.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+</dict> 
+</plist>" > /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+
+##Set the permission on the file just made.
+/usr/sbin/chown root:wheel /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+/bin/chmod 644 /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # APPLICATION
