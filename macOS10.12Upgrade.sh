@@ -46,13 +46,16 @@
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: March 9th, 2017
+# Updated On: March 10th, 2017
 # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # USER VARIABLES
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+##Installer Path (Location of Install macOS Sierra.app)
+installerPath="/Users/Shared/Install\ macOS\ Sierra.app"
 
 ##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
 userDialog=0
@@ -67,10 +70,6 @@ heading="Please wait as we prepare your computer for macOS Sierra..."
 description="
 This process will take approximately 5-10 minutes. 
 Once completed your computer will reboot and begin the upgrade."
-
-##Icon to be used for userDialog
-##Default is macOS Sierra Installer logo which is included in the staged installer package
-icon=/Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/InstallAssistant.icns
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # SYSTEM CHECKS
@@ -102,6 +101,24 @@ else
 	/bin/echo "Disk Check: ERROR - ${freeSpace%.*}GB Free Space Detected"
 fi
 
+##Check where Installer is Located
+##Need to add check if cached package - check waiting room
+installerPath2=$( echo $installerPath | sed 's/\\//g' )
+if [[ -d "$installerPath" ]]; then 
+	echo "Cached Package Present"
+	setPath="$installerPath"
+else
+	echo "Cached Package Not Present"
+	echo "Verifying Installer is in Applications folder..."
+	if [[ -d "/Applications/Install macOS Sierra.app" ]]; then
+		echo "Installer Found"
+		setPath="/Applications/Install\ macOS\ Sierra.app"
+	else
+		echo "Installer Not Found...Unable to Complete upgrade."
+		echo "Exiting..."
+		exit 0 
+fi
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # CREATE FIRST BOOT SCRIPT
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
@@ -112,7 +129,8 @@ fi
 ## First Run Script to remove the installer.
 
 ## Clean up files
-/bin/rm -fdr /Users/Shared/Install\ macOS\ Sierra.app
+/bin/rm -fdr $installerPath
+/bin/rm -fdr /Applications/Install\ macOS\ Sierra.app
 /bin/sleep 2
 /usr/local/jamf/bin/jamf recon
 
@@ -152,23 +170,27 @@ exit 0" > /usr/local/jamfps/finishOSInstall.sh
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
+##Icon to be used for userDialog
+##Default is macOS Sierra Installer logo which is included in the staged installer package
+icon=$setPath/Contents/Resources/InstallAssistant.icns
+
 if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
-    ##Launch jamfHelper
-    if [[ ${userDialog} == 0 ]]; then
-    	/bin/echo "Launching jamfHelper as FullScreen..."
-	    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
-	    jamfHelperPID=$(echo $!)
-    fi
-    if [[ ${userDialog} == 1 ]]; then
-	    /bin/echo "Launching jamfHelper as Utility Window..."
-	    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
-	    jamfHelperPID=$(echo $!)
-    fi
+	##Launch jamfHelper
+	if [[ ${userDialog} == 0 ]]; then
+		/bin/echo "Launching jamfHelper as FullScreen..."
+		/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
+		jamfHelperPID=$(echo $!)
+	fi
+	if [[ ${userDialog} == 1 ]]; then
+		/bin/echo "Launching jamfHelper as Utility Window..."
+		/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
+		jamfHelperPID=$(echo $!)
+	fi
 
 	##Begin Upgrade
 	/bin/echo "Launching startosinstall..."
-	/Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/startosinstall --volume / --applicationpath /Users/Shared/Install\ macOS\ Sierra.app --nointeraction --pidtosignal $jamfHelperPID &
-    /bin/sleep 3
+	$setPath/Contents/Resources/startosinstall --volume / --applicationpath $setPath --nointeraction --pidtosignal $jamfHelperPID &
+	/bin/sleep 3
 else
 	/bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
 	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for macOS Sierra. Please ensure you are connected to power and that you have at least 15GB of Free Space. 
