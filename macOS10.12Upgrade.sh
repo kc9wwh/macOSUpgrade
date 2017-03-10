@@ -114,6 +114,7 @@ fi
 ## Clean up files
 /bin/rm -fdr /Users/Shared/Install\ macOS\ Sierra.app
 /bin/sleep 2
+/usr/local/jamf/bin/jamf recon
 
 ## Remove LaunchDaemon
 /bin/launchctl unload -w /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
@@ -159,7 +160,7 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
 	    jamfHelperPID=$(echo $!)
     fi
     if [[ ${userDialog} == 1 ]]; then
-	    /bin/echo "Launching jamfHelper as FullScreen..."
+	    /bin/echo "Launching jamfHelper as Utility Window..."
 	    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
 	    jamfHelperPID=$(echo $!)
     fi

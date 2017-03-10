@@ -26,7 +26,7 @@ This script has been tested on OS X 10.11.5 upgrading to macOS Sierra 10.12.2 wi
 
 When you open the script you will find some user variables defined on lines 57-73. Here you can specify the message that is displayed to the end user while the script is running and preparing the computer to upgrade to macOS Sierra.
 
-Also, if you decide not to stage the macOS Sierra Installer in /Users/Shared/, you will need to update the paths on lines 73, 115 and 169. 
+Also, if you decide not to stage the macOS Sierra Installer in /Users/Shared/, you will need to update the paths on lines 73, 115 and 170. 
 
 
 **Stagging macOS Sierra Installer**
