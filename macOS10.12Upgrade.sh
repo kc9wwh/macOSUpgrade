@@ -39,6 +39,7 @@
 #           - Jamf Pro
 #           - Latest Version of macOS Sierra Installer
 #
+#
 # For more information, visit https://github.com/kc9wwh/macOSUpgrade
 #
 #
