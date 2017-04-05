@@ -37,7 +37,7 @@
 #
 # REQUIREMENTS:
 #           - Jamf Pro
-#
+#           - Latest Version of macOS Sierra Installer
 #
 # For more information, visit https://github.com/kc9wwh/macOSUpgrade
 #
@@ -116,6 +116,8 @@ fi
 /usr/local/jamf/bin/jamf recon
 ## Remove LaunchDaemon
 /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+## Remove Script
+/bin/rm -fdr /usr/local/jamfps
 exit 0" > /usr/local/jamfps/finishOSInstall.sh
 
 /usr/sbin/chown root:admin /usr/local/jamfps/finishOSInstall.sh
