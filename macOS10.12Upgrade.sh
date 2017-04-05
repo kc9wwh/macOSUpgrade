@@ -36,8 +36,7 @@
 # silently. 
 #
 # REQUIREMENTS:
-#			- Jamf Pro
-#			- macOS Sierra Installer must be staged in /Users/Shared/
+#           - Jamf Pro
 #
 #
 # For more information, visit https://github.com/kc9wwh/macOSUpgrade
@@ -46,7 +45,7 @@
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: March 9th, 2017
+# Updated On: April 5th, 2017
 # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -79,27 +78,27 @@ icon=/Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/InstallAssistan
 ##Check if device is on battery or ac power
 pwrAdapter=$( /usr/bin/pmset -g ps )
 if [[ ${pwrAdapter} == *"AC Power"* ]]; then
-	pwrStatus="OK"
-	/bin/echo "Power Check: OK - AC Power Detected"
+    pwrStatus="OK"
+    /bin/echo "Power Check: OK - AC Power Detected"
 else
-	pwrStatus="ERROR"
-	/bin/echo "Power Check: ERROR - No AC Power Detected"
+    pwrStatus="ERROR"
+    /bin/echo "Power Check: ERROR - No AC Power Detected"
 fi
 
 ##Check if free space > 15GB
 osMinor=$( /usr/bin/sw_vers -productVersion | awk -F. {'print $2'} )
 if [[ $osMinor -ge 12 ]]; then
-	freeSpace=$( /usr/sbin/diskutil info / | grep "Available Space" | awk '{print $4}' )
+    freeSpace=$( /usr/sbin/diskutil info / | grep "Available Space" | awk '{print $4}' )
 else
-	freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $4}' )
+    freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $4}' )
 fi
 
 if [[ ${freeSpace%.*} -ge 15 ]]; then
-	spaceStatus="OK"
-	/bin/echo "Disk Check: OK - ${freeSpace%.*}GB Free Space Detected"
+    spaceStatus="OK"
+    /bin/echo "Disk Check: OK - ${freeSpace%.*}GB Free Space Detected"
 else
-	spaceStatus="ERROR"
-	/bin/echo "Disk Check: ERROR - ${freeSpace%.*}GB Free Space Detected"
+    spaceStatus="ERROR"
+    /bin/echo "Disk Check: ERROR - ${freeSpace%.*}GB Free Space Detected"
 fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
@@ -110,16 +109,13 @@ fi
 
 /bin/echo "#!/bin/bash
 ## First Run Script to remove the installer.
-
 ## Clean up files
 /bin/rm -fdr /Users/Shared/Install\ macOS\ Sierra.app
 /bin/sleep 2
+## Update Device Inventory
 /usr/local/jamf/bin/jamf recon
-
 ## Remove LaunchDaemon
-/bin/launchctl unload -w /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
 /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
-
 exit 0" > /usr/local/jamfps/finishOSInstall.sh
 
 /usr/sbin/chown root:admin /usr/local/jamfps/finishOSInstall.sh
@@ -129,20 +125,24 @@ exit 0" > /usr/local/jamfps/finishOSInstall.sh
 # LAUNCH DAEMON
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-/bin/echo "<?xml version="1.0" encoding="UTF-8"?> 
+cat << EOF > /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+<?xml version="1.0" encoding="UTF-8"?> 
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"> 
 <plist version="1.0"> 
 <dict>
-	<key>Label</key> 
-	<string>com.jamfps.cleanupOSInstall</string> 
-	<key>ProgramArguments</key> 
-	<array> 
-		<string>/usr/local/jamfps/finishOSInstall.sh</string>
-	</array>
-	<key>RunAtLoad</key>
-	<true/>
+    <key>Label</key> 
+    <string>com.jamfps.cleanupOSInstall</string> 
+    <key>ProgramArguments</key> 
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>/usr/local/jamfps/finishOSInstall.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
 </dict> 
-</plist>" > /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+</plist>
+EOF
 
 ##Set the permission on the file just made.
 /usr/sbin/chown root:wheel /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
@@ -155,25 +155,25 @@ exit 0" > /usr/local/jamfps/finishOSInstall.sh
 if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     ##Launch jamfHelper
     if [[ ${userDialog} == 0 ]]; then
-    	/bin/echo "Launching jamfHelper as FullScreen..."
-	    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
-	    jamfHelperPID=$(echo $!)
+        /bin/echo "Launching jamfHelper as FullScreen..."
+        /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
+        jamfHelperPID=$(echo $!)
     fi
     if [[ ${userDialog} == 1 ]]; then
-	    /bin/echo "Launching jamfHelper as Utility Window..."
-	    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
-	    jamfHelperPID=$(echo $!)
+        /bin/echo "Launching jamfHelper as Utility Window..."
+        /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
+        jamfHelperPID=$(echo $!)
     fi
 
-	##Begin Upgrade
-	/bin/echo "Launching startosinstall..."
-	/Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/startosinstall --volume / --applicationpath /Users/Shared/Install\ macOS\ Sierra.app --nointeraction --pidtosignal $jamfHelperPID &
+    ##Begin Upgrade
+    /bin/echo "Launching startosinstall..."
+    /Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/startosinstall --applicationpath /Users/Shared/Install\ macOS\ Sierra.app --nointeraction --pidtosignal $jamfHelperPID &
     /bin/sleep 3
 else
-	/bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
-	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for macOS Sierra. Please ensure you are connected to power and that you have at least 15GB of Free Space. 
-	
-	If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
+    /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for macOS Sierra. Please ensure you are connected to power and that you have at least 15GB of Free Space. 
+    
+    If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
 fi
 
 exit 0
