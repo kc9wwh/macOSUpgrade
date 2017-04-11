@@ -31,13 +31,12 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # 
 # This script was designed to be used in a Self Service policy to ensure specific
-# requirements have been met before proceeding with an inplace upgrade to macOS Sierra, 
-# as well as to address changes Apple has made to the ability to complete macOS upgrades 
-# silently. 
+# requirements have been met before proceeding with an inplace upgrade of macOS, as well
+# as to address changes Apple has made to the ability to complete macOS upgrades silently. 
 #
 # REQUIREMENTS:
 #           - Jamf Pro
-#           - Latest Version of macOS Sierra Installer
+#           - macOS Installer
 #
 #
 # For more information, visit https://github.com/kc9wwh/macOSUpgrade
@@ -46,7 +45,7 @@
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: April 5th, 2017
+# Updated On: April 11th, 2017
 # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -54,14 +53,19 @@
 # USER VARIABLES
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
+installerPath="/Users/Shared/Install macOS Sierra.app"
+
+##Name of installer
+macosName="macOS Sierra"
+
 ##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
 userDialog=0
 
 ##Title to be used for userDialog (only applies to Utility Window)
-title="macOS Sierra Upgrade"
+title="$macosName Upgrade"
 
 ##Heading to be used for userDialog
-heading="Please wait as we prepare your computer for macOS Sierra..."
+heading="Please wait as we prepare your computer for $macosName..."
 
 ##Title to be used for userDialog
 description="
@@ -69,8 +73,8 @@ This process will take approximately 5-10 minutes.
 Once completed your computer will reboot and begin the upgrade."
 
 ##Icon to be used for userDialog
-##Default is macOS Sierra Installer logo which is included in the staged installer package
-icon=/Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/InstallAssistant.icns
+##Default is macOS Installer logo which is included in the staged installer package
+icon="$installerPath/Contents/Resources/InstallAssistant.icns"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # SYSTEM CHECKS
@@ -111,7 +115,7 @@ fi
 /bin/echo "#!/bin/bash
 ## First Run Script to remove the installer.
 ## Clean up files
-/bin/rm -fdr /Users/Shared/Install\ macOS\ Sierra.app
+/bin/rm -fdr "$installerPath"
 /bin/sleep 2
 ## Update Device Inventory
 /usr/local/jamf/bin/jamf recon
@@ -170,11 +174,15 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
 
     ##Begin Upgrade
     /bin/echo "Launching startosinstall..."
-    /Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/startosinstall --applicationpath /Users/Shared/Install\ macOS\ Sierra.app --nointeraction --pidtosignal $jamfHelperPID &
+    "$installerPath/Contents/Resources/startosinstall" --applicationpath "$installerPath" --nointeraction --pidtosignal $jamfHelperPID &
     /bin/sleep 3
 else
+	## Remove Script
+    /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+	/bin/rm -fdr /usr/local/jamfps
+
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for macOS Sierra. Please ensure you are connected to power and that you have at least 15GB of Free Space. 
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macosName. Please ensure you are connected to power and that you have at least 15GB of Free Space. 
     
     If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
 fi
