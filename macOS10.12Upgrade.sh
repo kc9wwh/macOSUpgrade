@@ -173,6 +173,10 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     /Users/Shared/Install\ macOS\ Sierra.app/Contents/Resources/startosinstall --applicationpath /Users/Shared/Install\ macOS\ Sierra.app --nointeraction --pidtosignal $jamfHelperPID &
     /bin/sleep 3
 else
+	## Remove Script
+    /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+	/bin/rm -fdr /usr/local/jamfps
+
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for macOS Sierra. Please ensure you are connected to power and that you have at least 15GB of Free Space. 
     
