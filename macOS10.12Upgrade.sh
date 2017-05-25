@@ -37,7 +37,8 @@
 #
 # REQUIREMENTS:
 #           - Jamf Pro
-#           - Latest Version of macOS Sierra Installer
+#           - Latest Version of the macOS Installer (must be 10.12.4 or later)
+#           - Look over the USER VARIABLES and configure as needed.
 #
 #
 # For more information, visit https://github.com/kc9wwh/macOSUpgrade
@@ -46,7 +47,7 @@
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: May 24th, 2017
+# Updated On: May 25th, 2017
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -63,13 +64,17 @@ title="macOS Sierra Upgrade"
 ##Heading to be used for userDialog
 heading="Please wait as we prepare your computer for macOS Sierra..."
 
-#Specify path to OS installer. Use Parameter 4, or specify here
+#Specify path to OS installer. Use Parameter 4 in the JSS, or specify here
+#Example: Install macOS Sierra.app
 OSInstaller="$4"
 
-##Version of OS. Use Parameter 5, or specify here.
+##Version of OS. Use Parameter 5 in the JSS, or specify here.
+#Example: 10.12.5
 version="$5"
 
-#Trigger used for download. Use Parameter 6, or specify here.
+#Trigger used for download. Use Parameter 6 in the JSS, or specify here.
+#This should match a custom trigger for a policy that contains an installer
+#Example: download-sierra-install
 download_trigger="$6"
 
 ##Title to be used for userDialog
@@ -118,29 +123,29 @@ fi
 ##Check for existing Sierra installer
 if [ -e "$OSInstaller" ]; then
   echo "$OSInstaller found, checking version."
-	OSVersion=`/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist"`
+  OSVersion=`/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist"`
   echo "OSVersion is $OSVersion"
-	if [ $OSVersion = $version ]; then
-		downloadSierra="No"
-	else
-		downloadSierra="Yes"
+  if [ $OSVersion = $version ]; then
+    downloadSierra="No"
+  else
+    downloadSierra="Yes"
     ##Delete old version.
     echo "Installer found, but old. Deleting..."
     rm -rf $OSInstaller
-	fi
+  fi
 else
-	downloadSierra="Yes"
+  downloadSierra="Yes"
 fi
 
 ##Download Sierra if needed
 if [ $downloadSierra = "Yes" ]; then
-	/Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
-	-windowType utility -title "$title"  -alignHeading center -alignDescription left -description "$dldescription" \
-	-button1 Ok -defaultButton 1 -icon "$icon" -iconSize 100
-	##Run policy to cache installer
-	jamf policy -event $download_trigger
+  /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+      -windowType utility -title "$title"  -alignHeading center -alignDescription left -description "$dldescription" \
+      -button1 Ok -defaultButton 1 -icon "$icon" -iconSize 100
+  ##Run policy to cache installer
+  jamf policy -event $download_trigger
 else
-	echo "macOS Sierra installer with $version was already present, continuing..."
+  echo "macOS Sierra installer with $version was already present, continuing..."
 fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -211,7 +216,7 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
 
     ##Begin Upgrade
     /bin/echo "Launching startosinstall..."
-    "$OSInstaller/Contents/Resources/startosinstall" --applicationpath "$OSInstaller" --agreetolicense --nointeraction --pidtosignal $jamfHelperPID &
+    "$OSInstaller/Contents/Resources/startosinstall" --applicationpath "$OSInstaller" --nointeraction --pidtosignal $jamfHelperPID &
     /bin/sleep 3
 else
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
