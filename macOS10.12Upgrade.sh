@@ -65,7 +65,7 @@ title="macOS Sierra Upgrade"
 heading="Please wait as we prepare your computer for macOS Sierra..."
 
 #Specify path to OS installer. Use Parameter 4 in the JSS, or specify here
-#Example: Install macOS Sierra.app
+#Example: /Applications/Install macOS Sierra.app
 OSInstaller="$4"
 
 ##Version of OS. Use Parameter 5 in the JSS, or specify here.
@@ -122,16 +122,16 @@ fi
 
 ##Check for existing Sierra installer
 if [ -e "$OSInstaller" ]; then
-  echo "$OSInstaller found, checking version."
+  /bin/echo "$OSInstaller found, checking version."
   OSVersion=`/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist"`
-  echo "OSVersion is $OSVersion"
+  /bin/echo "OSVersion is $OSVersion"
   if [ $OSVersion = $version ]; then
     downloadSierra="No"
   else
     downloadSierra="Yes"
     ##Delete old version.
-    echo "Installer found, but old. Deleting..."
-    rm -rf $OSInstaller
+    /bin/echo "Installer found, but old. Deleting..."
+    /bin/rm -rf "$OSInstaller"
   fi
 else
   downloadSierra="Yes"
@@ -143,9 +143,9 @@ if [ $downloadSierra = "Yes" ]; then
       -windowType utility -title "$title"  -alignHeading center -alignDescription left -description "$dldescription" \
       -button1 Ok -defaultButton 1 -icon "$icon" -iconSize 100
   ##Run policy to cache installer
-  jamf policy -event $download_trigger
+  /usr/local/jamf/bin/jamf policy -event $download_trigger
 else
-  echo "macOS Sierra installer with $version was already present, continuing..."
+  /bin/echo "macOS Sierra installer with $version was already present, continuing..."
 fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
