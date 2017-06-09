@@ -24,6 +24,7 @@ This script has been tested on OS X 10.11.5 upgrading to macOS Sierra 10.12.5 wi
 
 When you open the script you will find some user variables defined on lines 59-91. Here you can specify the message that is displayed to the end user while the script is running and preparing the computer to upgrade to macOS Sierra, as well as the varibles used to determine the version and path for the macOS Installer.
 
+
 **Stagging macOS Sierra Installer**
 
 In order for this script to work, you will have to have a copy of the macOS Sierra Installer that is available from the Mac App Store located in /Applications. One of the easiest ways to achieve this is to package the installer with composer as seen below and deploy the package via Jamf Pro.
