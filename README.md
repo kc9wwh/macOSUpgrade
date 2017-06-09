@@ -6,32 +6,28 @@ This script was designed to be used in a Self Service policy to ensure specific 
 
 Requirements:
 * Jamf Pro
-* Latest Version of macOS Sierra Installer
-
-
-Written by: Joshua Roskos | Professional Services Engineer | Jamf
-
-Created On: January 5th, 2017 | Updated On: April 5th, 2017
+* macOS Sierra 10.12.4 or later
+* Look over the USER VARIABLES and configure as needed.
 
 ___
 
 **Why is this needed?**
 
-Starting with macOS Sierra, Apple has begun enforcing the way in which you can silently call for the OS upgrade process to happen in the background. Because of this change, many common ways that have been used and worked in the past no longer do. This script was created to adhear to Apple's requirements of the startosinstall binary. 
+Starting with macOS Sierra, Apple has begun enforcing the way in which you can silently call for the OS upgrade process to happen in the background. Because of this change, many common ways that have been used and worked in the past no longer do. This script was created to adhear to Apple's requirements of the startosinstall binary.
 
-This script has been tested on OS X 10.11.5 upgrading to macOS Sierra 10.12.2 without issue. If the machine is FileVault encrypted, it will complete the authenticated restart to the OS Installer and automatically perform the upgrade with no user interaction. Upon completion the machine will again reboot to the macOS Sierra Login Window.
+This script has been tested on OS X 10.11.5 upgrading to macOS Sierra 10.12.5 without issue. If the machine is FileVault encrypted, it will complete the authenticated restart to the OS Installer and automatically perform the upgrade with no user interaction. Upon completion the machine will again reboot to the macOS Sierra Login Window.
+
+* Note: Authenticated login is broken with 10.12.4+. See https://github.com/kc9wwh/macOSUpgrade/issues/13
 
 
 **Configuring the Script**
 
-When you open the script you will find some user variables defined on lines 57-73. Here you can specify the message that is displayed to the end user while the script is running and preparing the computer to upgrade to macOS Sierra.
-
-Also, if you decide not to stage the macOS Sierra Installer in /Users/Shared/, you will need to update the paths on lines 73, 114 and 173. 
+When you open the script you will find some user variables defined on lines 59-91. Here you can specify the message that is displayed to the end user while the script is running and preparing the computer to upgrade to macOS Sierra, as well as the varibles used to determine the version and path for the macOS Installer. Also, don't forget to setup a policy with a custom trigger specified as defined in the user variables.
 
 
 **Stagging macOS Sierra Installer**
 
-In order for this script to work, you will have to have a copy of the macOS Sierra Installer that is available from the Mac App Store located in /Users/Shared/. One of the easiest ways to achieve this is to package the installer with composer as seen below and deploy the package via Jamf Pro.
+In order for this script to work, you will have to have a copy of the macOS Sierra Installer that is available from the Mac App Store located in /Applications. One of the easiest ways to achieve this is to package the installer with composer as seen below and deploy the package via Jamf Pro.
 
 ![alt text](/imgs/composer.png)
 
