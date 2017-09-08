@@ -15,7 +15,7 @@ ___
 
 Starting with macOS Sierra, Apple has begun enforcing the way in which you can silently call for the OS upgrade process to happen in the background. Because of this change, many common ways that have been used and worked in the past no longer do. This script was created to adhear to Apple's requirements of the startosinstall binary.
 
-This script has been tested on OS X 10.11.5 upgrading to macOS Sierra 10.12.5 without issue. If the machine is FileVault encrypted, it will complete the authenticated restart to the OS Installer and automatically perform the upgrade with no user interaction. Upon completion the machine will again reboot to the macOS Sierra Login Window.
+This script has been tested on OS X 10.11.5 upgrading to macOS Sierra 10.12.5 and 10.126 without issue (as well as the latest High Sierra betas). If the machine is FileVault encrypted, it will complete the authenticated restart to the OS Installer and automatically perform the upgrade with no user interaction. Upon completion the machine will again reboot to the macOS Sierra Login Window.
 
 * Note: Authenticated login is broken with 10.12.4+. See https://github.com/kc9wwh/macOSUpgrade/issues/13
 

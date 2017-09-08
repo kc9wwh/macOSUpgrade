@@ -47,7 +47,7 @@
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: May 25th, 2017
+# Updated On: September 8th, 2017
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -107,17 +107,17 @@ fi
 ##Check if free space > 15GB
 osMinor=$( /usr/bin/sw_vers -productVersion | awk -F. {'print $2'} )
 if [[ $osMinor -ge 12 ]]; then
-    freeSpace=$( /usr/sbin/diskutil info / | grep "Available Space" | awk '{print $4}' )
+    freeSpace=$( /usr/sbin/diskutil info / | grep "Available Space" | awk '{print $6}' | cut -c 2- )
 else
-    freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $4}' )
+    freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $6}' | cut -c 2- )
 fi
 
-if [[ ${freeSpace%.*} -ge 15 ]]; then
+if [[ ${freeSpace%.*} -ge 15000000000 ]]; then
     spaceStatus="OK"
-    /bin/echo "Disk Check: OK - ${freeSpace%.*}GB Free Space Detected"
+    /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
 else
     spaceStatus="ERROR"
-    /bin/echo "Disk Check: ERROR - ${freeSpace%.*}GB Free Space Detected"
+    /bin/echo "Disk Check: ERROR - ${freeSpace%.*} Bytes Free Space Detected"
 fi
 
 ##Check for existing Sierra installer
@@ -141,7 +141,7 @@ fi
 if [ $downloadSierra = "Yes" ]; then
   /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
       -windowType utility -title "$title"  -alignHeading center -alignDescription left -description "$dldescription" \
-      -button1 Ok -defaultButton 1 -icon "$icon" -iconSize 100
+      -button1 Ok -defaultButton 1 -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" -iconSize 100
   ##Run policy to cache installer
   /usr/local/jamf/bin/jamf policy -event $download_trigger
 else
@@ -201,6 +201,10 @@ EOF
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+##Caffeinate
+/usr/bin/caffeinate -dis & 
+caffeinatePID=$(echo $!)
+
 if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     ##Launch jamfHelper
     if [[ ${userDialog} == 0 ]]; then
@@ -229,5 +233,8 @@ else
     If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
 
 fi
+
+##Kill Caffeinate
+kill ${caffeinatePID}
 
 exit 0
