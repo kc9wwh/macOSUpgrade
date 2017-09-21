@@ -58,9 +58,6 @@
 ##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
 userDialog=0
 
-##Title to be used for userDialog (only applies to Utility Window)
-title="$7 Upgrade"
-
 ##Heading to be used for userDialog
 heading="Please wait as we prepare your computer for $macOSname..."
 
@@ -80,6 +77,9 @@ download_trigger="$6"
 #Title of OS
 #Example: macOS High Sierra
 macOSname="$7"
+
+##Title to be used for userDialog (only applies to Utility Window)
+title="$7 Upgrade"
 
 ##Title to be used for userDialog
 description="
