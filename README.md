@@ -22,7 +22,7 @@ This script has been tested on OS X 10.11.5 upgrading to macOS Sierra 10.12.5 an
 
 **Configuring the Script**
 
-When you open the script you will find some user variables defined on lines 59-91. Here you can specify the message that is displayed to the end user while the script is running and preparing the computer to upgrade to macOS Sierra, as well as the varibles used to determine the version and path for the macOS Installer. Also, don't forget to setup a policy with a custom trigger specified as defined in the user variables.
+When you open the script you will find some user variables defined on lines 59-91. Here you can specify the message that is displayed to the end user while the script is running and preparing the computer to upgrade to macOS Sierra, as well as the variables used to determine the version and path for the macOS Installer. Also, don't forget to setup a policy with a custom trigger specified as defined in the user variables.
 
 
 **Staging macOS Sierra Installer**
