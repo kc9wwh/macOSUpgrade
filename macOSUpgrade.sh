@@ -47,7 +47,7 @@
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: September 16th, 2017
+# Updated On: October 17th, 2017
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -57,9 +57,6 @@
 
 ##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
 userDialog=0
-
-##Heading to be used for userDialog
-heading="Please wait as we prepare your computer for $macOSname..."
 
 #Specify path to OS installer. Use Parameter 4 in the JSS, or specify here
 #Example: /Applications/Install macOS High Sierra.app
@@ -76,10 +73,13 @@ download_trigger="$6"
 
 #Title of OS
 #Example: macOS High Sierra
-macOSname="$7"
+macOSname=`echo "$OSInstaller" |sed 's/^\/Applications\/Install \(.*\)\.app$/\1/'`
 
 ##Title to be used for userDialog (only applies to Utility Window)
-title="$7 Upgrade"
+title="$macOSname Upgrade"
+
+##Heading to be used for userDialog
+heading="Please wait as we prepare your computer for $macOSname..."
 
 ##Title to be used for userDialog
 description="
