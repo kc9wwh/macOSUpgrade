@@ -110,7 +110,7 @@ fi
 
 ##Check if free space > 15GB
 osMinor=$( /usr/bin/sw_vers -productVersion | awk -F. {'print $2'} )
-if [[ $osMinor -ge 12 ]]; then
+if [[ $osMinor -gt 11 ]]; then
     freeSpace=$( /usr/sbin/diskutil info / | grep "Available Space" | awk '{print $6}' | cut -c 2- )
 else
     freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $6}' | cut -c 2- )
