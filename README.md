@@ -6,7 +6,8 @@ This script was designed to be used in a Self Service policy to ensure specific 
 
 Requirements:
 * Jamf Pro
-* macOS Sierra 10.12.4 or later
+* macOS Clients on 10.10.5 or later
+* macOS Installer 10.12.4 or later
 * Look over the USER VARIABLES and configure as needed.
 
 ___
@@ -15,14 +16,12 @@ ___
 
 Starting with macOS Sierra, Apple has begun enforcing the way in which you can silently call for the OS upgrade process to happen in the background. Because of this change, many common ways that have been used and worked in the past no longer do. This script was created to adhere to Apple's requirements of the startosinstall binary.
 
-This script has been tested on OS X 10.11.5 upgrading to macOS Sierra 10.12.5 and 10.12.6 without issue (as well as the latest High Sierra GM-RC1). If the machine is FileVault encrypted, it will complete the authenticated restart to the OS Installer and automatically perform the upgrade with no user interaction. Upon completion the machine will again reboot to the macOS Sierra Login Window.
-
-* Note: Authenticated login is broken with 10.12.4+. See https://github.com/kc9wwh/macOSUpgrade/issues/13
+*This script has been tested on OS X 10.10.5, 10.11.5 and macOS 10.12.5 clients upgrading to 10.12.6 and 10.13.3. As of v2.5 of this script FileVault Authenticated reboots work again!*
 
 
 **Configuring the Script**
 
-When you open the script you will find some user variables defined on lines 59-91. Here you can specify the message that is displayed to the end user while the script is running and preparing the computer to upgrade to macOS Sierra, as well as the variables used to determine the version and path for the macOS Installer. Also, don't forget to setup a policy with a custom trigger specified as defined in the user variables.
+When you open the script you will find some user variables defined on lines 60-99. Here you can specify the message that is displayed to the end user while the script is running and preparing the computer to upgrade to macOS Sierra, as well as the variables used to determine the version and path for the macOS Installer. Also, don't forget to setup a policy with a custom trigger specified as defined in the user variables.
 
 
 **Staging the macOS Installer**
