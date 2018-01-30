@@ -2,7 +2,7 @@
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
-# Copyright (c) 2017 Jamf.  All rights reserved.
+# Copyright (c) 2018 Jamf.  All rights reserved.
 #
 #       Redistribution and use in source and binary forms, with or without
 #       modification, are permitted provided that the following conditions are met:
@@ -35,9 +35,12 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
+# VERSION: v2.5
+#
 # REQUIREMENTS:
 #           - Jamf Pro
-#           - Latest Version of the macOS Installer (must be 10.12.4 or later)
+#           - macOS Clients running version 10.10.5 or later
+#           - macOS Installer 10.12.4 or later
 #           - Look over the USER VARIABLES and configure as needed.
 #
 #
@@ -47,7 +50,7 @@
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: October 17th, 2017
+# Updated On: January 30th, 2018
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -97,6 +100,9 @@ icon="$OSInstaller/Contents/Resources/InstallAssistant.icns"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # SYSTEM CHECKS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+##Get Current User
+currentUser=$( stat -f %Su /dev/console )
 
 ##Check if device is on battery or ac power
 pwrAdapter=$( /usr/bin/pmset -g ps )
@@ -202,6 +208,47 @@ EOF
 /bin/chmod 644 /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# LAUNCH AGENT FOR FILEVAULT AUTHENTICATED REBOOTS
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+##Determine Program Argument
+if [[ $osMinor -ge 11 ]]; then
+    progArgument="osinstallersetupd"
+elif [[ $osMinor -eq 10 ]]; then
+    progArgument="osinstallersetupplaind"
+fi
+
+cat << EOP > /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.apple.install.osinstallersetupd</string>
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+    <key>MachServices</key>
+    <dict>
+        <key>com.apple.install.osinstallersetupd</key>
+        <true/>
+    </dict>
+    <key>TimeOut</key>
+    <integer>Aqua</integer>
+    <key>OnDemand</key>
+    <true/>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$OSInstaller/Contents/Frameworks/OSInstallerSetup.framework/Resources/$progArgument</string>
+    </array>
+</dict>
+</plist>
+EOP
+
+##Set the permission on the file just made.
+/usr/sbin/chown root:wheel /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+/bin/chmod 644 /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -221,7 +268,11 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
         /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
         jamfHelperPID=$(echo $!)
     fi
-
+    ##Load LaunchAgent
+    if [[ ${currentUser} != "root" ]]; then
+        userID=$( id -u ${currentUser} )
+        launchctl bootstrap gui/${userID} /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+    fi
     ##Begin Upgrade
     /bin/echo "Launching startosinstall..."
     "$OSInstaller/Contents/Resources/startosinstall" --applicationpath "$OSInstaller" --nointeraction --pidtosignal $jamfHelperPID &
@@ -230,6 +281,7 @@ else
     ## Remove Script
     /bin/rm -f /usr/local/jamfps/finishOSInstall.sh
     /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+    /bin/rm -f /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
 
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macOSname. Please ensure you are connected to power and that you have at least 15GB of Free Space.
