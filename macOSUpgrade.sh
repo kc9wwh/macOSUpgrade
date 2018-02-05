@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.5
+# VERSION: v2.5.1
 #
 # REQUIREMENTS:
 #           - Jamf Pro
@@ -50,7 +50,7 @@
 # Written by: Joshua Roskos | Professional Services Engineer | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: January 30th, 2018
+# Updated On: February 5th, 2018
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -103,6 +103,9 @@ icon="$OSInstaller/Contents/Resources/InstallAssistant.icns"
 
 ##Get Current User
 currentUser=$( stat -f %Su /dev/console )
+
+##Check if FileVault Enabled
+fvStatus=$( /usr/bin/fdesetup status )
 
 ##Check if device is on battery or ac power
 pwrAdapter=$( /usr/bin/pmset -g ps )
@@ -269,7 +272,7 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
         jamfHelperPID=$(echo $!)
     fi
     ##Load LaunchAgent
-    if [[ ${currentUser} != "root" ]]; then
+    if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
         userID=$( id -u ${currentUser} )
         launchctl bootstrap gui/${userID} /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
     fi
