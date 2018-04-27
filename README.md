@@ -31,6 +31,7 @@ When you start deploying this script to your end-users you will want to ensure t
 * [laurentpertois/High-Sierra-Compatibility-Checker](https://github.com/laurentpertois/High-Sierra-Compatibility-CheckerÂ)
 
 Also, if you are encrypting your macOS devices (which I hope you are), you will want to ensure your scope also includes devices that are not currently encrypting. While the devices are encrypting, you will not be able to upgrade to macOS High Sierra until encryption is complete.
+
 | And/Or | Criteria | Operator | Value |
 | :---: | :---: | :---: | :---: |
 |   | FileVault 2 Partition Encryption State | is not | Encrypting |
