@@ -118,8 +118,9 @@ else
 fi
 
 ##Check if free space > 15GB
-osMinor=$( /usr/bin/sw_vers -productVersion | awk -F. {'print $2'} )
-if [[ $osMinor -ge 12 ]]; then
+osMajor=$( /usr/bin/sw_vers -productVersion | awk -F. {'print $2'} )
+osMinor=$( /usr/bin/sw_vers -productVersion | awk -F. {'print $3'} )
+if [[ $osMajor -eq 12 ]] || [[ $osMajor -eq 13 && $osMinor -lt 4 ]]; then
     freeSpace=$( /usr/sbin/diskutil info / | grep "Available Space" | awk '{print $6}' | cut -c 2- )
 else
     freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $6}' | cut -c 2- )
@@ -215,9 +216,9 @@ EOF
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 ##Determine Program Argument
-if [[ $osMinor -ge 11 ]]; then
+if [[ $osMajor -ge 11 ]]; then
     progArgument="osinstallersetupd"
-elif [[ $osMinor -eq 10 ]]; then
+elif [[ $osMajor -eq 10 ]]; then
     progArgument="osinstallersetupplaind"
 fi
 
