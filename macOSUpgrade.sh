@@ -151,9 +151,18 @@ verifyChecksum() {
     fi
 }
 
+cleanExit() {
+    kill ${caffeinatePID}
+    exit $1
+}
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # SYSTEM CHECKS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+##Caffeinate
+/usr/bin/caffeinate -dis &
+caffeinatePID=$(echo $!)
 
 ##Get Current User
 currentUser=$( stat -f %Su /dev/console )
@@ -192,7 +201,7 @@ fi
 loopCount=0
 while [[ $loopCount -lt 3 ]]; do
     if [ -e "$OSInstaller" ]; then
-        bin/echo "$OSInstaller found, checking version."
+        /bin/echo "$OSInstaller found, checking version."
         OSVersion=`/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist"`
         /bin/echo "OSVersion is $OSVersion"
         if [ $OSVersion = $version ]; then
@@ -210,7 +219,7 @@ while [[ $loopCount -lt 3 ]]; do
             /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
             /bin/echo "Prompting user for error and exiting..."
             /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
-            exit 0
+            cleanExit 0
         fi
     else
         downloadInstaller
@@ -311,10 +320,6 @@ EOP
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-##Caffeinate
-/usr/bin/caffeinate -dis &
-caffeinatePID=$(echo $!)
-
 if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     ##Launch jamfHelper
     if [[ ${userDialog} == 0 ]]; then
@@ -355,7 +360,4 @@ else
 
 fi
 
-##Kill Caffeinate
-kill ${caffeinatePID}
-
-exit 0
+cleanExit 0
