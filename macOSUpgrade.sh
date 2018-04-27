@@ -41,6 +41,7 @@
 #           - Jamf Pro
 #           - macOS Clients running version 10.10.5 or later
 #           - macOS Installer 10.12.4 or later
+#           - macOS Installer 10.13.4 or later (ONLY for `eraseInstall` variable!)
 #           - Look over the USER VARIABLES and configure as needed.
 #
 #
@@ -57,6 +58,12 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # USER VARIABLES
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+##Erase & Install macOS (Factory Defaults)
+##Requires macOS Installer 10.13.4 or later
+##Disabled by default
+##Options: 0 = Disabled / 1 = Enabled
+eraseInstall=0
 
 ##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
 userDialog=0
@@ -127,16 +134,20 @@ downloadInstaller() {
 }
 
 verifyChecksum() {
-    osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/InstallESD.dmg" )
-    if [[ "$osChecksum" == "$installESDChecksum" ]]; then
-        echo "Checksum: Valid"
-        break
+    if [[ "$installESDChecksum" != "" ]]; then
+        osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/InstallESD.dmg" )
+        if [[ "$osChecksum" == "$installESDChecksum" ]]; then
+            echo "Checksum: Valid"
+            break
+        else
+            echo "Checksum: Not Valid"
+            echo "Beginning new dowload of installer"
+            /bin/rm -rf "$OSInstaller"
+            sleep 2
+            downloadInstaller
+        fi
     else
-        echo "Checksum: Not Valid"
-        echo "Beginning new dowload of installer"
-        /bin/rm -rf "$OSInstaller"
-        sleep 2
-        downloadInstaller
+        break
     fi
 }
 
@@ -323,7 +334,13 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     fi
     ##Begin Upgrade
     /bin/echo "Launching startosinstall..."
-    "$OSInstaller/Contents/Resources/startosinstall" --applicationpath "$OSInstaller" --nointeraction --pidtosignal $jamfHelperPID &
+    ##Check if eraseInstall is Enabled
+    if [[ $eraseInstall == 1 ]]; then
+        /bin/echo "   Script is configured for Erase and Install of macOS."
+        "$OSInstaller/Contents/Resources/startosinstall" --applicationpath "$OSInstaller" --eraseinstall --nointeraction --pidtosignal $jamfHelperPID &
+    else
+        "$OSInstaller/Contents/Resources/startosinstall" --applicationpath "$OSInstaller" --nointeraction --pidtosignal $jamfHelperPID &
+    fi
     /bin/sleep 3
 else
     ## Remove Script
