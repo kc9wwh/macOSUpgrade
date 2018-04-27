@@ -8,7 +8,7 @@
 ![OS X 10.12 Installer Tested](https://img.shields.io/badge/Sierra%20Installer-10.12.4%2B-yellow.svg)
 ![macOS 10.13 Installer Tested](https://img.shields.io/badge/High%20Sierra%20Installer-OK-brightgreen.svg)
 ___
-This script was designed to be used in a Self Service policy to ensure specific requirements have been met before proceeding with an inplace upgrade to macOS, as well as to address changes Apple has made to the ability to complete macOS upgrades silently.
+This script was designed to be used in a Self Service policy to ensure specific requirements have been met before proceeding with an in-place upgrade to macOS, as well as to address changes Apple has made to the ability to complete macOS upgrades silently.
 
 Requirements:
 * Jamf Pro
@@ -20,10 +20,20 @@ ___
 
 **Why is this needed?**
 
-Starting with macOS Sierra, Apple has begun enforcing the way in which you can silently call for the OS upgrade process to happen in the background. Because of this change, many common ways that have been used and worked in the past no longer do. This script was created to adhere to Apple's requirements of the startosinstall binary.
+Starting with macOS Sierra, Apple has begun enforcing the way in which you can silently call for the OS upgrade process to happen in the background. Because of this change, many common ways that have been used and worked in the past no longer do. This script was created to adhere to Apple's requirements of the `startosinstall` binary.
 
 *This script has been tested on OS X 10.10.5, 10.11.5 and macOS 10.12.5 clients upgrading to 10.12.6 and 10.13.3. As of v2.5 of this script FileVault Authenticated reboots work again!*
 
+**Scope**
+
+When you start deploying this script to your end-users you will want to ensure that it is scoped properly. At that very least, you'll want to create a Smart Group to determine if the target system(s) meet the system requirements for the macOS upgrade.
+
+* [laurentpertois/High-Sierra-Compatibility-Checker](https://github.com/laurentpertois/High-Sierra-Compatibility-CheckerÂ)
+
+Also, if you are encrypting your macOS devices (which I hope you are), you will want to ensure your scope also includes devices that are not currently encrypting. While the devices are encrypting, you will not be able to upgrade to macOS High Sierra until encryption is complete.
+| And/Or | Criteria | Operator | Value |
+| :---: | :---: | :---: | :---: |
+|   | FileVault 2 Partition Encryption State | is not | Encrypting |
 
 **Configuring the Script**
 
