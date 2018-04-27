@@ -79,7 +79,7 @@ download_trigger="$6"
 ##Leave the variable BLANK if you do NOT want to verify the checksum (DEFAULT)
 ##Example Command: /sbin/md5 /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
 ##Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
-installESDChecksum=""
+installESDChecksum="$7"
 
 ##Title of OS
 ##Example: macOS High Sierra
@@ -126,6 +126,20 @@ downloadInstaller() {
     kill ${jamfHUDPID}
 }
 
+verifyChecksum() {
+    osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/InstallESD.dmg" )
+    if [[ "$osChecksum" == "$installESDChecksum" ]]; then
+        echo "Checksum: Valid"
+        break
+    else
+        echo "Checksum: Not Valid"
+        echo "Beginning new dowload of installer"
+        /bin/rm -rf "$OSInstaller"
+        sleep 2
+        downloadInstaller
+    fi
+}
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # SYSTEM CHECKS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -164,22 +178,33 @@ else
 fi
 
 ##Check for existing OS installer
-if [ -e "$OSInstaller" ]; then
-  /bin/echo "$OSInstaller found, checking version."
-  OSVersion=`/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist"`
-  /bin/echo "   OSVersion is $OSVersion"
-  if [ $OSVersion = $version ]; then
-    /bin/echo "   Installer found, version matches. Proceeding..."
-  else
-    ##Delete old version.
-    /bin/echo "   Installer found, but old. Deleting..."
-    /bin/rm -rf "$OSInstaller"
-    sleep 2
-    downloadInstaller
-  fi
-else
-  downloadInstaller
-fi
+loopCount=0
+while [[ $loopCount -lt 3 ]]; do
+    if [ -e "$OSInstaller" ]; then
+        bin/echo "$OSInstaller found, checking version."
+        OSVersion=`/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist"`
+        /bin/echo "OSVersion is $OSVersion"
+        if [ $OSVersion = $version ]; then
+          /bin/echo "Installer found, version matches. Verifying checksum..."
+          verifyChecksum
+        else
+          ##Delete old version.
+          /bin/echo "Installer found, but old. Deleting..."
+          /bin/rm -rf "$OSInstaller"
+          sleep 2
+          downloadInstaller
+        fi
+        ((loopCount++))
+        if [ $loopCount -ge 3 ]; then
+            /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
+            /bin/echo "Prompting user for error and exiting..."
+            /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
+            exit 0
+        fi
+    else
+        downloadInstaller
+    fi
+done
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # CREATE FIRST BOOT SCRIPT
