@@ -61,21 +61,28 @@
 ##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
 userDialog=0
 
-#Specify path to OS installer. Use Parameter 4 in the JSS, or specify here
-#Example: /Applications/Install macOS High Sierra.app
+##Specify path to OS installer. Use Parameter 4 in the JSS, or specify here
+##Example: /Applications/Install macOS High Sierra.app
 OSInstaller="$4"
 
 ##Version of OS. Use Parameter 5 in the JSS, or specify here.
-#Example: 10.12.5
+##Example: 10.12.5
 version="$5"
 
-#Trigger used for download. Use Parameter 6 in the JSS, or specify here.
-#This should match a custom trigger for a policy that contains an installer
-#Example: download-sierra-install
+##Trigger used for download. Use Parameter 6 in the JSS, or specify here.
+##This should match a custom trigger for a policy that contains an installer
+##Example: download-sierra-install
 download_trigger="$6"
 
-#Title of OS
-#Example: macOS High Sierra
+##MD5 Checksum of InstallESD.dmg
+##This variable is OPTIONAL
+##Leave the variable BLANK if you do NOT want to verify the checksum (DEFAULT)
+##Example Command: /sbin/md5 /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
+##Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
+installESDChecksum=""
+
+##Title of OS
+##Example: macOS High Sierra
 macOSname=`echo "$OSInstaller" |sed 's/^\/Applications\/Install \(.*\)\.app$/\1/'`
 
 ##Title to be used for userDialog (only applies to Utility Window)
@@ -89,13 +96,35 @@ description="
 This process will take approximately 5-10 minutes.
 Once completed your computer will reboot and begin the upgrade."
 
-#Description to be used prior to downloading the OS installer
+##Description to be used prior to downloading the OS installer
 dldescription="We need to download $macOSname to your computer, this will \
 take several minutes."
+
+##Jamf Helper HUD Position if macOS Installer needs to be downloaded
+##Options: ul (Upper Left); ll (Lower Left); ur (Upper Right); lr (Lower Right)
+##Leave this variable empty for HUD to be centered on main screen
+dlPosition="ul"
 
 ##Icon to be used for userDialog
 ##Default is macOS Installer logo which is included in the staged installer package
 icon="$OSInstaller/Contents/Resources/InstallAssistant.icns"
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# FUNCTIONS
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+downloadInstaller() {
+    /bin/echo "Downloading macOS Installer..."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+        -windowType hud -windowPosition $dlPosition -title "$title"  -alignHeading center -alignDescription left -description "$dldescription" \
+        -lockHUD -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" -iconSize 100
+    ##Capture PID for Jamf Helper HUD
+    jamfHUDPID=$(echo $!)
+    ##Run policy to cache installer
+    /usr/local/jamf/bin/jamf policy -event $download_trigger
+    ##Kill Jamf Helper HUD post download
+    kill ${jamfHUDPID}
+}
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # SYSTEM CHECKS
@@ -138,28 +167,18 @@ fi
 if [ -e "$OSInstaller" ]; then
   /bin/echo "$OSInstaller found, checking version."
   OSVersion=`/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist"`
-  /bin/echo "OSVersion is $OSVersion"
+  /bin/echo "   OSVersion is $OSVersion"
   if [ $OSVersion = $version ]; then
-    downloadOS="No"
+    /bin/echo "   Installer found, version matches. Proceeding..."
   else
-    downloadOS="Yes"
     ##Delete old version.
-    /bin/echo "Installer found, but old. Deleting..."
+    /bin/echo "   Installer found, but old. Deleting..."
     /bin/rm -rf "$OSInstaller"
+    sleep 2
+    downloadInstaller
   fi
 else
-  downloadOS="Yes"
-fi
-
-##Download OS installer if needed
-if [ $downloadOS = "Yes" ]; then
-  /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
-      -windowType utility -title "$title"  -alignHeading center -alignDescription left -description "$dldescription" \
-      -button1 Ok -defaultButton 1 -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" -iconSize 100
-  ##Run policy to cache installer
-  /usr/local/jamf/bin/jamf policy -event $download_trigger
-else
-  /bin/echo "$macOSname installer with $version was already present, continuing..."
+  downloadInstaller
 fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
