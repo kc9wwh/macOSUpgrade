@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.5.1
+# VERSION: v2.6.0
 #
 # REQUIREMENTS:
 #           - Jamf Pro
@@ -47,10 +47,10 @@
 # For more information, visit https://github.com/kc9wwh/macOSUpgrade
 #
 #
-# Written by: Joshua Roskos | Professional Services Engineer | Jamf
+# Written by: Joshua Roskos | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: February 5th, 2018
+# Updated On: April 27th, 2018
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -170,7 +170,7 @@ fi
 /bin/echo "#!/bin/bash
 ## First Run Script to remove the installer.
 ## Clean up files
-/bin/rm -fdr "$OSInstaller"
+/bin/rm -fdr \"$OSInstaller\"
 /bin/sleep 2
 ## Update Device Inventory
 /usr/local/jamf/bin/jamf recon
