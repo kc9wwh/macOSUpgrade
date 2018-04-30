@@ -59,6 +59,11 @@ In order for this script to work, you will have to have a copy of the macOS Inst
 ![alt text](/imgs/selfservice.png)
 
 
+**Example of Factory Reset Self Service Description**
+
+![alt text](/imgs/factoryReset.png)
+
+
 **Example of HUD Displayed if Installer is Downloaded**
 
 ![alt text](/imgs/downloadHUD.png)
