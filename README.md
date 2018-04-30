@@ -41,7 +41,7 @@ Also, if you are encrypting your macOS devices (which I hope you are), you will 
 
 When you open the script you will find some user variables defined on lines 60-118. Here you can specify the message that is displayed to the end user while the script is running and preparing the computer to upgrade to macOS Sierra, as well as the variables used to determine the version and path for the macOS Installer. Also, don't forget to setup a policy with a custom trigger specified as defined in the user variables.
 
-*Added in v2.6.0 - You can now specify to use the `--eraseInstall` parameter when using macOS Installer 10.13.4 or later. Essentially this will wipe and reload the system to factory defaults.*
+*Added in v2.6.0 - You can now specify to use the `--eraseInstall` parameter when using macOS Installer 10.13.4 or later and the client is running macOS 10.13 or later. Essentially this will wipe and reload the system to factory defaults. Yay \o/*
 
 
 **Staging the macOS Installer**

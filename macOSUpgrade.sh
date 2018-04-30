@@ -41,7 +41,7 @@
 #           - Jamf Pro
 #           - macOS Clients running version 10.10.5 or later
 #           - macOS Installer 10.12.4 or later
-#           - macOS Installer 10.13.4 or later (ONLY for `eraseInstall` variable!)
+#           - eraseInstall option is ONLY supported with macOS Installer 10.13.4+ and client-side macOS 10.13+
 #           - Look over the USER VARIABLES and configure as needed.
 #
 #
