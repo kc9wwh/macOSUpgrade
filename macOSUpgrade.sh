@@ -51,7 +51,7 @@
 # Written by: Joshua Roskos | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: April 27th, 2018
+# Updated On: April 30th, 2018
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -99,8 +99,7 @@ title="$macOSname Upgrade"
 heading="Please wait as we prepare your computer for $macOSname..."
 
 ##Title to be used for userDialog
-description="
-This process will take approximately 5-10 minutes.
+description="This process will take approximately 5-10 minutes.
 Once completed your computer will reboot and begin the upgrade."
 
 ##Description to be used prior to downloading the OS installer
