@@ -124,7 +124,7 @@ downloadInstaller() {
     /bin/echo "Downloading macOS Installer..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
         -windowType hud -windowPosition $dlPosition -title "$title"  -alignHeading center -alignDescription left -description "$dldescription" \
-        -lockHUD -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" -iconSize 100
+        -lockHUD -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" -iconSize 100 &
     ##Capture PID for Jamf Helper HUD
     jamfHUDPID=$(echo $!)
     ##Run policy to cache installer

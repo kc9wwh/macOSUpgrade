@@ -14,7 +14,7 @@ Requirements:
 * Jamf Pro
 * macOS Clients on 10.10.5 or later
 * macOS Installer 10.12.4 or later
-* macOS Installer 10.13.4 or later (ONLY for `--eraseInstall` variable!)
+* `eraseInstall` option is ONLY supported with macOS Installer 10.13.4+ and client-side macOS 10.13+
 * Look over the USER VARIABLES and configure as needed.
 
 ___
@@ -54,6 +54,11 @@ In order for this script to work, you will have to have a copy of the macOS Inst
 **Example of Required Self Service Description**
 
 ![alt text](/imgs/selfservice.png)
+
+
+**Example of HUD Displayed if Installer is Downloaded**
+
+![alt text](/imgs/downloadHUD.png)
 
 
 **Example of FullScreen Dialog**
