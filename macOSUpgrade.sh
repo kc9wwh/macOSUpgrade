@@ -167,7 +167,7 @@ caffeinatePID=$(echo $!)
 currentUser=$( stat -f %Su /dev/console )
 
 ##Check if FileVault Enabled
-fvStatus=$( /usr/bin/fdesetup status )
+fvStatus=$( /usr/bin/fdesetup status | head -1 )
 
 ##Check if device is on battery or ac power
 pwrAdapter=$( /usr/bin/pmset -g ps )
