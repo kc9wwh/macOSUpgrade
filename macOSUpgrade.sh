@@ -90,7 +90,7 @@ installESDChecksum="$7"
 
 ##Title of OS
 ##Example: macOS High Sierra
-macOSname=`echo "$OSInstaller" |sed 's/^\/Applications\/Install \(.*\)\.app$/\1/'`
+macOSname=$( echo "$OSInstaller" | sed 's/^\/Applications\/Install \(.*\)\.app$/\1/' )
 
 ##Title to be used for userDialog (only applies to Utility Window)
 title="$macOSname Upgrade"
@@ -125,7 +125,7 @@ downloadInstaller() {
         -windowType hud -windowPosition $dlPosition -title "$title"  -alignHeading center -alignDescription left -description "$dldescription" \
         -lockHUD -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" -iconSize 100 &
     ##Capture PID for Jamf Helper HUD
-    jamfHUDPID=$(echo $!)
+    jamfHUDPID=$( echo $! )
     ##Run policy to cache installer
     /usr/local/jamf/bin/jamf policy -event $download_trigger
     ##Kill Jamf Helper HUD post download
@@ -161,7 +161,7 @@ cleanExit() {
 
 ##Caffeinate
 /usr/bin/caffeinate -dis &
-caffeinatePID=$(echo $!)
+caffeinatePID=$( echo $! )
 
 ##Get Current User
 currentUser=$( stat -f %Su /dev/console )
@@ -324,12 +324,12 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     if [[ ${userDialog} == 0 ]]; then
         /bin/echo "Launching jamfHelper as FullScreen..."
         /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
-        jamfHelperPID=$(echo $!)
+        jamfHelperPID=$( echo $! )
     fi
     if [[ ${userDialog} == 1 ]]; then
         /bin/echo "Launching jamfHelper as Utility Window..."
         /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
-        jamfHelperPID=$(echo $!)
+        jamfHelperPID=$( echo $! )
     fi
     ##Load LaunchAgent
     if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
