@@ -59,10 +59,6 @@
 # USER VARIABLES
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-
-##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
-userDialog=0
-
 ##Specify path to OS installer. Use Parameter 4 in the JSS, or specify here
 ##Example: /Applications/Install macOS High Sierra.app
 OSInstaller="$4"
@@ -91,6 +87,14 @@ eraseInstall=0
 ##Use Parameter 8 in the JSS.
 if [ "$8" -eq 0 ] || [ "$8" -eq 1 ];then
   eraseInstall="$8"
+fi
+
+##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
+##Full Screen by default
+userDialog=0
+##Use Parameter 9 in the JSS.
+if [ "$9" -eq 0 ] || [ "$9" -eq 1 ];then
+  userDialog="$9"
 fi
 
 ##Title of OS
