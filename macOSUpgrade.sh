@@ -88,8 +88,11 @@ download_trigger="$6"
 ##Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
 installESDChecksum="$7"
 
-##Valid Checksum.  O (Default) for false, 1 for true.
+##Valid Checksum?  O (Default) for false, 1 for true.
 validChecksum=0
+
+##Unsuccessful Download?  0 (Default) for false, 1 for true.
+unsuccessfulDownload=0
 
 ##Title of OS
 ##Example: macOS High Sierra
@@ -222,19 +225,24 @@ while [[ $loopCount -lt 3 ]]; do
           downloadInstaller
         fi
         if [ "$validChecksum" == 1 ]; then
+        	unsuccessfulDownload=0
         	break
         fi
-        ((loopCount++))
-        if [ $loopCount -ge 3 ]; then
-            /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
-            /bin/echo "Prompting user for error and exiting..."
-            /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
-            cleanExit 0
-        fi
     else
-        downloadInstaller
+    	downloadInstaller
     fi
+
+	unsuccessfulDownload=1
+   	((loopCount++))
 done
+
+if (( unsuccessfulDownload == 1 )); then
+    /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
+    /bin/echo "Prompting user for error and exiting..."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
+    cleanExit 0
+fi
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # CREATE FIRST BOOT SCRIPT
