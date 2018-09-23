@@ -1,5 +1,4 @@
 language: shell
 sudo: false
-os: osx
 script:
   - bash -c 'shopt -s globstar; shellcheck **/*.{sh,ksh,bash}'
