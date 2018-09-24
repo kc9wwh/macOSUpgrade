@@ -7,6 +7,7 @@
 ![macOS 10.13 Client Tested](https://img.shields.io/badge/macOS%2010.13-OK-brightgreen.svg)
 ![OS X 10.12 Installer Tested](https://img.shields.io/badge/Sierra%20Installer-10.12.4%2B-yellow.svg)
 ![macOS 10.13 Installer Tested](https://img.shields.io/badge/High%20Sierra%20Installer-OK-brightgreen.svg)
+[![Build Status](https://travis-ci.org/kc9wwh/macOSUpgrade.svg?branch=master)](https://travis-ci.org/kc9wwh/macOSUpgrade)
 ___
 This script was designed to be used in a Self Service policy to ensure specific requirements have been met before proceeding with an in-place upgrade to macOS, as well as to address changes Apple has made to the ability to complete macOS upgrades silently.
 
