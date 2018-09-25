@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.6.1
+# VERSION: v2.7.0
 #
 # REQUIREMENTS:
 #           - Jamf Pro
@@ -51,7 +51,7 @@
 # Written by: Joshua Roskos | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: April 30th, 2018
+# Updated On: September 25th, 2018
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
