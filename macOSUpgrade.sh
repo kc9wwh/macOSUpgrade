@@ -99,7 +99,7 @@ fi
 
 ##Title of OS
 ##Example: macOS High Sierra
-macOSname=`echo "$OSInstaller" |sed 's/^\/Applications\/Install \(.*\)\.app$/\1/'`
+macOSname=`/bin/echo "$OSInstaller" |/usr/bin/sed 's/^\/Applications\/Install \(.*\)\.app$/\1/'`
 
 ##Title to be used for userDialog (only applies to Utility Window)
 title="$macOSname Upgrade"
@@ -138,20 +138,20 @@ downloadInstaller() {
     ##Run policy to cache installer
     /usr/local/jamf/bin/jamf policy -event $download_trigger
     ##Kill Jamf Helper HUD post download
-    kill ${jamfHUDPID}
+    /bin/kill ${jamfHUDPID}
 }
 
 verifyChecksum() {
     if [[ "$installESDChecksum" != "" ]]; then
         osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/InstallESD.dmg" )
         if [[ "$osChecksum" == "$installESDChecksum" ]]; then
-            echo "Checksum: Valid"
+            /bin/echo "Checksum: Valid"
             break
         else
-            echo "Checksum: Not Valid"
-            echo "Beginning new dowload of installer"
+            /bin/echo "Checksum: Not Valid"
+            /bin/echo "Beginning new dowload of installer"
             /bin/rm -rf "$OSInstaller"
-            sleep 2
+            /bin/sleep 2
             downloadInstaller
         fi
     else
@@ -160,7 +160,7 @@ verifyChecksum() {
 }
 
 cleanExit() {
-    kill ${caffeinatePID}
+    /bin/kill ${caffeinatePID}
     exit $1
 }
 
@@ -170,7 +170,7 @@ cleanExit() {
 
 ##Caffeinate
 /usr/bin/caffeinate -dis &
-caffeinatePID=$(echo $!)
+caffeinatePID=$(/bin/echo $!)
 
 ##Get Current User
 currentUser=$( stat -f %Su /dev/console )
@@ -189,12 +189,12 @@ else
 fi
 
 ##Check if free space > 15GB
-osMajor=$( /usr/bin/sw_vers -productVersion | awk -F. {'print $2'} )
-osMinor=$( /usr/bin/sw_vers -productVersion | awk -F. {'print $3'} )
+osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. {'print $2'} )
+osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. {'print $3'} )
 if [[ $osMajor -eq 12 ]] || [[ $osMajor -eq 13 && $osMinor -lt 4 ]]; then
-    freeSpace=$( /usr/sbin/diskutil info / | grep "Available Space" | awk '{print $6}' | cut -c 2- )
+    freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Available Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
 else
-    freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $6}' | cut -c 2- )
+    freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Free Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
 fi
 
 if [[ ${freeSpace%.*} -ge 15000000000 ]]; then
@@ -219,7 +219,7 @@ while [[ $loopCount -lt 3 ]]; do
           ##Delete old version.
           /bin/echo "Installer found, but old. Deleting..."
           /bin/rm -rf "$OSInstaller"
-          sleep 2
+          /bin/sleep 2
           downloadInstaller
         fi
         ((loopCount++))
@@ -260,7 +260,7 @@ exit 0" > /usr/local/jamfps/finishOSInstall.sh
 # LAUNCH DAEMON
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-cat << EOF > /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+/bin/cat << EOF > /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -333,17 +333,17 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     if [[ ${userDialog} == 0 ]]; then
         /bin/echo "Launching jamfHelper as FullScreen..."
         /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
-        jamfHelperPID=$(echo $!)
+        jamfHelperPID=$(/bin/echo $!)
     fi
     if [[ ${userDialog} == 1 ]]; then
         /bin/echo "Launching jamfHelper as Utility Window..."
         /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
-        jamfHelperPID=$(echo $!)
+        jamfHelperPID=$(/bin/echo $!)
     fi
     ##Load LaunchAgent
     if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
-        userID=$( id -u ${currentUser} )
-        launchctl bootstrap gui/${userID} /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+        userID=$( /usr/bin/id -u ${currentUser} )
+        /bin/launchctl bootstrap gui/${userID} /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
     fi
     ##Begin Upgrade
     /bin/echo "Launching startosinstall..."
