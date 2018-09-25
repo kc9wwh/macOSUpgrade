@@ -59,15 +59,6 @@
 # USER VARIABLES
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-##Erase & Install macOS (Factory Defaults)
-##Requires macOS Installer 10.13.4 or later
-##Disabled by default
-##Options: 0 = Disabled / 1 = Enabled
-eraseInstall=0
-
-##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
-userDialog=0
-
 ##Specify path to OS installer. Use Parameter 4 in the JSS, or specify here
 ##Example: /Applications/Install macOS High Sierra.app
 OSInstaller="$4"
@@ -93,6 +84,24 @@ validChecksum=0
 
 ##Unsuccessful Download?  0 (Default) for false, 1 for true.
 unsuccessfulDownload=0
+
+##Erase & Install macOS (Factory Defaults)
+##Requires macOS Installer 10.13.4 or later
+##Disabled by default
+##Options: 0 = Disabled / 1 = Enabled
+eraseInstall=0
+##Use Parameter 8 in the JSS.
+if [ "$8" -eq 0 ] || [ "$8" -eq 1 ];then
+  eraseInstall="$8"
+fi
+
+##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
+##Full Screen by default
+userDialog=0
+##Use Parameter 9 in the JSS.
+if [ "$9" -eq 0 ] || [ "$9" -eq 1 ];then
+  userDialog="$9"
+fi
 
 ##Title of OS
 ##Example: macOS High Sierra
@@ -135,21 +144,21 @@ downloadInstaller() {
     ##Run policy to cache installer
     /usr/local/jamf/bin/jamf policy -event "$download_trigger"
     ##Kill Jamf Helper HUD post download
-    kill "${jamfHUDPID}"
+    /bin/kill "${jamfHUDPID}"
 }
 
 verifyChecksum() {
     if [[ "$installESDChecksum" != "" ]]; then
         osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/InstallESD.dmg" )
         if [[ "$osChecksum" == "$installESDChecksum" ]]; then
-            echo "Checksum: Valid"
+            /bin/echo "Checksum: Valid"
             validChecksum=1
             return
         else
-            echo "Checksum: Not Valid"
-            echo "Beginning new dowload of installer"
+            /bin/echo "Checksum: Not Valid"
+            /bin/echo "Beginning new dowload of installer"
             /bin/rm -rf "$OSInstaller"
-            sleep 2
+            /bin/sleep 2
             downloadInstaller
         fi
     else
@@ -160,7 +169,7 @@ verifyChecksum() {
 }
 
 cleanExit() {
-    kill "${caffeinatePID}"
+    /bin/kill "${caffeinatePID}"
     exit "$1"
 }
 
@@ -189,14 +198,12 @@ else
 fi
 
 ##Check if free space > 15GB
-osMajor=$( /usr/bin/sw_vers -productVersion | awk -F. '{print $2}' )
-osMinor=$( /usr/bin/sw_vers -productVersion | awk -F. '{print $3}' )
-
-## Is there some reason to stop at 10.13.4 here or was that just the current versio at the time this script was written and this value should be updated?
+osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. {'print $2'} )
+osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. {'print $3'} )
 if [[ $osMajor -eq 12 ]] || [[ $osMajor -eq 13 && $osMinor -lt 4 ]]; then
-    freeSpace=$( /usr/sbin/diskutil info / | grep "Available Space" | awk '{print $6}' | cut -c 2- )
+    freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Available Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
 else
-    freeSpace=$( /usr/sbin/diskutil info / | grep "Free Space" | awk '{print $6}' | cut -c 2- )
+    freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Free Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
 fi
 
 if [[ ${freeSpace%.*} -ge 15000000000 ]]; then
@@ -221,7 +228,7 @@ while [[ $loopCount -lt 3 ]]; do
           ##Delete old version.
           /bin/echo "Installer found, but old. Deleting..."
           /bin/rm -rf "$OSInstaller"
-          sleep 2
+          /bin/sleep 2
           downloadInstaller
         fi
         if [ "$validChecksum" == 1 ]; then
@@ -270,7 +277,7 @@ exit 0" > /usr/local/jamfps/finishOSInstall.sh
 # LAUNCH DAEMON
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-cat << EOF > /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+/bin/cat << EOF > /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -352,8 +359,8 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     fi
     ##Load LaunchAgent
     if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
-        userID=$( id -u "$currentUser" )
-        launchctl bootstrap gui/"$userID" /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+        userID=$( /usr/bin/id -u ${currentUser} )
+        /bin/launchctl bootstrap gui/${userID} /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
     fi
     ##Begin Upgrade
     /bin/echo "Launching startosinstall..."

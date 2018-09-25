@@ -1,0 +1,4 @@
+language: shell
+sudo: false
+script:
+  - bash -c 'shopt -s globstar; shellcheck **/*.{sh,ksh,bash}'
