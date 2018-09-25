@@ -79,6 +79,12 @@ download_trigger="$6"
 ##Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
 installESDChecksum="$7"
 
+##Valid Checksum?  O (Default) for false, 1 for true.
+validChecksum=0
+
+##Unsuccessful Download?  0 (Default) for false, 1 for true.
+unsuccessfulDownload=0
+
 ##Erase & Install macOS (Factory Defaults)
 ##Requires macOS Installer 10.13.4 or later
 ##Disabled by default
@@ -99,7 +105,7 @@ fi
 
 ##Title of OS
 ##Example: macOS High Sierra
-macOSname=`/bin/echo "$OSInstaller" |/usr/bin/sed 's/^\/Applications\/Install \(.*\)\.app$/\1/'`
+macOSname=$(/bin/echo "$OSInstaller" | /usr/bin/sed 's/^\/Applications\/Install \(.*\)\.app$/\1/')
 
 ##Title to be used for userDialog (only applies to Utility Window)
 title="$macOSname Upgrade"
@@ -134,11 +140,11 @@ downloadInstaller() {
         -windowType hud -windowPosition $dlPosition -title "$title"  -alignHeading center -alignDescription left -description "$dldescription" \
         -lockHUD -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" -iconSize 100 &
     ##Capture PID for Jamf Helper HUD
-    jamfHUDPID=$(echo $!)
+    jamfHUDPID=$!
     ##Run policy to cache installer
-    /usr/local/jamf/bin/jamf policy -event $download_trigger
+    /usr/local/jamf/bin/jamf policy -event "$download_trigger"
     ##Kill Jamf Helper HUD post download
-    /bin/kill ${jamfHUDPID}
+    /bin/kill "${jamfHUDPID}"
 }
 
 verifyChecksum() {
@@ -146,7 +152,8 @@ verifyChecksum() {
         osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/InstallESD.dmg" )
         if [[ "$osChecksum" == "$installESDChecksum" ]]; then
             /bin/echo "Checksum: Valid"
-            break
+            validChecksum=1
+            return
         else
             /bin/echo "Checksum: Not Valid"
             /bin/echo "Beginning new dowload of installer"
@@ -155,13 +162,15 @@ verifyChecksum() {
             downloadInstaller
         fi
     else
-        break
+    	##Checksum not specified as script argument, assume true
+    	validChecksum=1
+        return
     fi
 }
 
 cleanExit() {
-    /bin/kill ${caffeinatePID}
-    exit $1
+    /bin/kill "${caffeinatePID}"
+    exit "$1"
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -170,10 +179,10 @@ cleanExit() {
 
 ##Caffeinate
 /usr/bin/caffeinate -dis &
-caffeinatePID=$(/bin/echo $!)
+caffeinatePID=$!
 
 ##Get Current User
-currentUser=$( stat -f %Su /dev/console )
+currentUser=$( /usr/bin/stat -f %Su /dev/console )
 
 ##Check if FileVault Enabled
 fvStatus=$( /usr/bin/fdesetup status | head -1 )
@@ -189,8 +198,8 @@ else
 fi
 
 ##Check if free space > 15GB
-osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. {'print $2'} )
-osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. {'print $3'} )
+osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $2}' )
+osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $3}' )
 if [[ $osMajor -eq 12 ]] || [[ $osMajor -eq 13 && $osMinor -lt 4 ]]; then
     freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Available Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
 else
@@ -210,9 +219,9 @@ loopCount=0
 while [[ $loopCount -lt 3 ]]; do
     if [ -e "$OSInstaller" ]; then
         /bin/echo "$OSInstaller found, checking version."
-        OSVersion=`/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist"`
+        OSVersion=$(/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist")
         /bin/echo "OSVersion is $OSVersion"
-        if [ $OSVersion = $version ]; then
+        if [ "$OSVersion" = "$version" ]; then
           /bin/echo "Installer found, version matches. Verifying checksum..."
           verifyChecksum
         else
@@ -222,17 +231,25 @@ while [[ $loopCount -lt 3 ]]; do
           /bin/sleep 2
           downloadInstaller
         fi
-        ((loopCount++))
-        if [ $loopCount -ge 3 ]; then
-            /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
-            /bin/echo "Prompting user for error and exiting..."
-            /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
-            cleanExit 0
+        if [ "$validChecksum" == 1 ]; then
+        	unsuccessfulDownload=0
+        	break
         fi
     else
-        downloadInstaller
+    	downloadInstaller
     fi
+
+	unsuccessfulDownload=1
+   	((loopCount++))
 done
+
+if (( unsuccessfulDownload == 1 )); then
+    /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
+    /bin/echo "Prompting user for error and exiting..."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
+    cleanExit 0
+fi
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # CREATE FIRST BOOT SCRIPT
@@ -309,7 +326,7 @@ cat << EOP > /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
         <true/>
     </dict>
     <key>TimeOut</key>
-    <integer>Aqua</integer>
+    <integer>300</integer>
     <key>OnDemand</key>
     <true/>
     <key>ProgramArguments</key>
@@ -333,26 +350,26 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     if [[ ${userDialog} == 0 ]]; then
         /bin/echo "Launching jamfHelper as FullScreen..."
         /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
-        jamfHelperPID=$(/bin/echo $!)
+        jamfHelperPID=$!
     fi
     if [[ ${userDialog} == 1 ]]; then
         /bin/echo "Launching jamfHelper as Utility Window..."
         /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
-        jamfHelperPID=$(/bin/echo $!)
+        jamfHelperPID=$!
     fi
     ##Load LaunchAgent
     if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
-        userID=$( /usr/bin/id -u ${currentUser} )
-        /bin/launchctl bootstrap gui/${userID} /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+        userID=$( /usr/bin/id -u "${currentUser}" )
+        /bin/launchctl bootstrap gui/"${userID}"/Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
     fi
     ##Begin Upgrade
     /bin/echo "Launching startosinstall..."
     ##Check if eraseInstall is Enabled
     if [[ $eraseInstall == 1 ]]; then
         /bin/echo "   Script is configured for Erase and Install of macOS."
-        "$OSInstaller/Contents/Resources/startosinstall" --applicationpath "$OSInstaller" --eraseinstall --nointeraction --pidtosignal $jamfHelperPID &
+        "$OSInstaller/Contents/Resources/startosinstall" --applicationpath "$OSInstaller" --agreetolicense --eraseinstall --nointeraction --pidtosignal "$jamfHelperPID" &
     else
-        "$OSInstaller/Contents/Resources/startosinstall" --applicationpath "$OSInstaller" --nointeraction --pidtosignal $jamfHelperPID &
+        "$OSInstaller/Contents/Resources/startosinstall" --applicationpath "$OSInstaller" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" &
     fi
     /bin/sleep 3
 else
