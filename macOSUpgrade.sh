@@ -59,15 +59,6 @@
 # USER VARIABLES
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-##Erase & Install macOS (Factory Defaults)
-##Requires macOS Installer 10.13.4 or later
-##Disabled by default
-##Options: 0 = Disabled / 1 = Enabled
-eraseInstall=0
-
-##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
-userDialog=0
-
 ##Specify path to OS installer. Use Parameter 4 in the JSS, or specify here
 ##Example: /Applications/Install macOS High Sierra.app
 OSInstaller="$4"
@@ -87,6 +78,24 @@ download_trigger="$6"
 ##Example Command: /sbin/md5 /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
 ##Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
 installESDChecksum="$7"
+
+##Erase & Install macOS (Factory Defaults)
+##Requires macOS Installer 10.13.4 or later
+##Disabled by default
+##Options: 0 = Disabled / 1 = Enabled
+eraseInstall=0
+##Use Parameter 8 in the JSS.
+if [ "$8" -eq 0 ] || [ "$8" -eq 1 ];then
+  eraseInstall="$8"
+fi
+
+##Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
+##Full Screen by default
+userDialog=0
+##Use Parameter 9 in the JSS.
+if [ "$9" -eq 0 ] || [ "$9" -eq 1 ];then
+  userDialog="$9"
+fi
 
 ##Title of OS
 ##Example: macOS High Sierra
