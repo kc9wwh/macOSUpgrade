@@ -198,8 +198,8 @@ else
 fi
 
 ##Check if free space > 15GB
-osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. {'print $2'} )
-osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. {'print $3'} )
+osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $2}' )
+osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $3}' )
 if [[ $osMajor -eq 12 ]] || [[ $osMajor -eq 13 && $osMinor -lt 4 ]]; then
     freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Available Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
 else
@@ -359,8 +359,8 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     fi
     ##Load LaunchAgent
     if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
-        userID=$( /usr/bin/id -u ${currentUser} )
-        /bin/launchctl bootstrap gui/${userID} /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+        userID=$( /usr/bin/id -u "${currentUser}" )
+        /bin/launchctl bootstrap gui/"${userID}"/Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
     fi
     ##Begin Upgrade
     /bin/echo "Launching startosinstall..."
