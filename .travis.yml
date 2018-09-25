@@ -1,6 +1,5 @@
 language: shell
 sudo: false
-os: osx
 script:
   - shopt -s globstar
   - shellcheck **/*.sh
