@@ -48,6 +48,11 @@ In order for this script to work, you will have to have a copy of the macOS Inst
 
 ![alt text](/imgs/composer.png)
 
+Otherwise it can also be packaged using the command line as shown below and deploy the package via Jamf Pro.
+
+```sh
+pkgbuild --install-location /Applications --component "/path/to/macOSInstallerApp" "/path/to/xxxxx.pkg"
+```
 
 **Example of Required Self Service Description**
 
