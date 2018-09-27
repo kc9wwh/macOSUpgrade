@@ -76,14 +76,11 @@ versionMinor=$( /bin/echo "$version" | /usr/bin/awk -F. '{print $3}' )
 download_trigger="$6"
 
 ##MD5 Checksum of InstallESD.dmg
-##If you do NOT want to verify the checksum and use following parameters eraseInstall and/or userDialog,
-## put 'none' here.
-##Example Command: /sbin/md5 -q /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
+##This variable is OPTIONAL
+##Leave the variable BLANK if you do NOT want to verify the checksum (DEFAULT)
+##Example Command: /sbin/md5 /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
 ##Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
 installESDChecksum="$7"
-if [ "$( /bin/echo "${installESDChecksum:-none}" | /usr/bin/tr "[:upper:]" "[:lower:]" )" = 'none' ]; then
-    installESDChecksum=''
-fi
 
 ##Valid Checksum?  O (Default) for false, 1 for true.
 validChecksum=0
