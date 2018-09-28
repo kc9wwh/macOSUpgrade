@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.7.2
+# VERSION: v2.7.2.1
 #
 # REQUIREMENTS:
 #           - Jamf Pro
@@ -70,9 +70,12 @@ version="$5"
 versionMajor=$( /bin/echo "$version" | /usr/bin/awk -F. '{print $2}' )
 versionMinor=$( /bin/echo "$version" | /usr/bin/awk -F. '{print $3}' )
 
-##Trigger used for download. Use Parameter 6 in the JSS, or specify here.
-##This should match a custom trigger for a policy that contains an installer
-##Example: download-sierra-install
+##Custom Trigger used for download. Use Parameter 6 in the JSS, or specify here.
+##This should match a custom trigger for a policy that contains just the 
+##MacOS installer. Make sure that the policy is scoped properly
+##to relevant computers and/or users, or else the custom trigger will
+##not be picked up. Use a separate policy for the script itself.
+##Example trigger name: download-sierra-install
 download_trigger="$6"
 
 ##MD5 Checksum of InstallESD.dmg
