@@ -44,7 +44,7 @@ When you open the script you will find some user variables defined on lines 60-1
 
 **Staging the macOS Installer**
 
-In order for this script to work, you will have to have a copy of the macOS Installer that is available from the Mac App Store located in /Applications. One of the easiest ways to achieve this is to package the installer with composer as seen below and deploy the package via Jamf Pro.
+In order for this script to work, you will have to have a copy of the macOS Installer that is available from the Mac App Store located in /Applications. One of the easiest ways to achieve this is to package the installer (in PKG format) with Composer as seen below and deploy the package via Jamf Pro.
 
 ![alt text](/imgs/composer.png)
 
