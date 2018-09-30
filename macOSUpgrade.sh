@@ -261,7 +261,7 @@ fi
 # CREATE FIRST BOOT SCRIPT
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-/bin/mkdir /usr/local/jamfps
+/bin/mkdir -p /usr/local/jamfps
 
 /bin/echo "#!/bin/bash
 ## First Run Script to remove the installer.
