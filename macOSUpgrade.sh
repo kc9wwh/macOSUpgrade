@@ -376,9 +376,9 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     fi
 
     if [ "$versionMajor" -ge 14 ]; then
-        "$OSInstaller/Contents/Resources/startosinstall" $eraseopt --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" &
+        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" &
     else
-        "$OSInstaller/Contents/Resources/startosinstall" $eraseopt --applicationpath "$OSInstaller" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" &
+        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --applicationpath "\"$OSInstaller\"" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" &
     fi
     /bin/sleep 3
 else
