@@ -225,11 +225,6 @@ loopCount=0
 while [[ $loopCount -lt 3 ]]; do
     if [ -e "$OSInstaller" ]; then
         /bin/echo "$OSInstaller found, checking version."
-        if [ ! -f "$OSInstaller/Contents/SharedSupport/InstallInfo.plist" ]; then
-            echo "Failed to get OS version info."
-            echo "Not found: $OSInstaller/Contents/SharedSupport/InstallInfo.plist"
-            cleanExit 0
-        fi
         OSVersion=$(/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist")
         /bin/echo "OSVersion is $OSVersion"
         if [ "$OSVersion" = "$version" ]; then
