@@ -261,7 +261,7 @@ fi
 # CREATE FIRST BOOT SCRIPT
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-/bin/mkdir /usr/local/jamfps
+/bin/mkdir -p /usr/local/jamfps
 
 /bin/echo "#!/bin/bash
 ## First Run Script to remove the installer.
@@ -375,10 +375,11 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
         /bin/echo "   Script is configured for Erase and Install of macOS."
     fi
 
+    osinstallLogfile="/var/log/startosinstall.log"
     if [ "$versionMajor" -ge 14 ]; then
-        "$OSInstaller/Contents/Resources/startosinstall" $eraseopt --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" &
+        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
     else
-        "$OSInstaller/Contents/Resources/startosinstall" $eraseopt --applicationpath "$OSInstaller" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" &
+        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --applicationpath "\"$OSInstaller\"" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
     fi
     /bin/sleep 3
 else
