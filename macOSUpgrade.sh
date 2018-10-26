@@ -64,7 +64,7 @@
 OSInstaller="$4"
 
 ##Version of Installer OS. Use Parameter 5 in the JSS, or specify here.
-##Example Command: /usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "/Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallInfo.plistr"
+##Example Command: /usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "/Applications/Install macOS High Sierra.app/Contents/SharedSupport/InstallInfo.plist"
 ##Example: 10.12.5
 version="$5"
 versionMajor=$( /bin/echo "$version" | /usr/bin/awk -F. '{print $2}' )
