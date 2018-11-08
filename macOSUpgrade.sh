@@ -190,8 +190,20 @@ caffeinatePID=$!
 ##Get Current User
 currentUser=$( /usr/bin/stat -f %Su /dev/console )
 
+##Get Current Users homefolder
+currentUserHomeDirectory=$( /usr/bin/dscl . -read "/users/$currentUser" NFSHomeDirectory | cut -d " " -f 2 )
+
 ##Check if FileVault Enabled
 fvStatus=$( /usr/bin/fdesetup status | head -1 )
+
+##Check if current user is an admin
+/usr/bin/dscl . read /Groups/admin GroupMembership | grep -i "$currentUser"
+if [[ $? -ne 0 ]] ; then
+	/bin/echo "User is not an Admin.  Adding $currentUser to Admin group"
+	/usr/sbin/dseditgroup -o edit -a "$currentUser" -t user admin
+	/bin/echo "Demote token file added for $currentUser at $currentUserHomeDirectory/.demoteafterupgrade"
+	/usr/bin/touch "$currentUserHomeDirectory"/.demoteafterupgrade
+fi
 
 ##Check if device is on battery or ac power
 pwrAdapter=$( /usr/bin/pmset -g ps )
@@ -263,10 +275,11 @@ fi
 
 /bin/mkdir -p /usr/local/jamfps
 
-/bin/echo "#!/bin/bash
+/bin/cat > /usr/local/jamfps/finishOSInstall.sh <<'EOL'
+#!/bin/bash
 ## First Run Script to remove the installer.
 ## Clean up files
-/bin/rm -fr \"$OSInstaller\"
+/bin/rm -fr "$OSInstaller"
 /bin/sleep 2
 ## Update Device Inventory
 /usr/local/jamf/bin/jamf recon
@@ -274,10 +287,19 @@ fi
 /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
 ## Remove Script
 /bin/rm -fr /usr/local/jamfps
-exit 0" > /usr/local/jamfps/finishOSInstall.sh
-
-/usr/sbin/chown root:admin /usr/local/jamfps/finishOSInstall.sh
-/bin/chmod 755 /usr/local/jamfps/finishOSInstall.sh
+##Demote if user was not an admin before upgrade
+##Get Current User
+currentUser=$( /usr/bin/stat -f %Su /dev/console )
+##Get Current Users homefolder
+currentUserHomeDirectory=$( /usr/bin/dscl . -read "/users/$currentUser" NFSHomeDirectory | cut -d " " -f 2 )
+if [[ -e "$currentUserHomeDirectory"/.demoteafterupgrade ]] ; then
+	/bin/echo "User was not an Admin before upgrade, Removing $currentUser from Admin group"
+	/usr/sbin/dseditgroup -o edit -d "$currentUser" -t user admin
+	/bin/echo "Demote token file removed for $currentUser at $currentUserHomeDirectory/.demoteafterupgrade"
+	rm -f "$currentUserHomeDirectory"/.demoteafterupgrade
+fi	
+exit 0
+EOL
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH DAEMON
