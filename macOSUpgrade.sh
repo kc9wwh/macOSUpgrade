@@ -197,12 +197,14 @@ currentUserHomeDirectory=$( /usr/bin/dscl . -read "/users/$currentUser" NFSHomeD
 fvStatus=$( /usr/bin/fdesetup status | head -1 )
 
 ##Check if current user is an admin
-/usr/bin/dscl . read /Groups/admin GroupMembership | grep -i "$currentUser"
+/usr/bin/dscl . read /Groups/admin GroupMembership |  tr ' ' '\n' | grep -x "$currentUser"
 if [[ $? -ne 0 ]] ; then
-	/bin/echo "User is not an Admin.  Adding $currentUser to Admin group"
-	/usr/sbin/dseditgroup -o edit -a "$currentUser" -t user admin
-	/bin/echo "Demote token file added for $currentUser at $currentUserHomeDirectory/.demoteafterupgrade"
-	/usr/bin/touch "$currentUserHomeDirectory"/.demoteafterupgrade
+	if [[ "$fvStatus" == "FileVault is On." ]] ; then
+		/bin/echo "FV is on and OS User is not an Admin.  Adding $currentUser to Admin group"
+		/usr/sbin/dseditgroup -o edit -a "$currentUser" -t user admin
+		/bin/echo "Demote token file added for $currentUser at $currentUserHomeDirectory/.demoteafterupgrade"
+		/usr/bin/touch "$currentUserHomeDirectory"/.demoteafterupgrade
+	fi
 fi
 
 ##Check if device is on battery or ac power
