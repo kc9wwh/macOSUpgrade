@@ -301,6 +301,10 @@ fi
 exit 0
 EOL
 
+##Set the permission on the file just made.
+/usr/sbin/chown root:admin /usr/local/jamfps/finishOSInstall.sh
+/bin/chmod 755 /usr/local/jamfps/finishOSInstall.sh
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH DAEMON
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
