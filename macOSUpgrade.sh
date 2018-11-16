@@ -262,10 +262,11 @@ fi
 
 /bin/mkdir -p /usr/local/jamfps
 
-/bin/echo "#!/bin/bash
+/bin/cat << EOF > /usr/local/jamfps/finishOSInstall.sh
+#!/bin/bash
 ## First Run Script to remove the installer.
 ## Clean up files
-/bin/rm -fr \"$OSInstaller\"
+/bin/rm -fr "$OSInstaller"
 /bin/sleep 2
 ## Update Device Inventory
 /usr/local/jamf/bin/jamf recon
@@ -274,7 +275,8 @@ fi
 /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
 ## Remove Script
 /bin/rm -fr /usr/local/jamfps
-exit 0" > /usr/local/jamfps/finishOSInstall.sh
+exit 0
+EOF
 
 /usr/sbin/chown root:admin /usr/local/jamfps/finishOSInstall.sh
 /bin/chmod 755 /usr/local/jamfps/finishOSInstall.sh
