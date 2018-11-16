@@ -262,7 +262,10 @@ fi
 
 /bin/mkdir -p /usr/local/jamfps
 
-/bin/cat << EOF > /usr/local/jamfps/finishOSInstall.sh
+finishOSInstallFilePath="/usr/local/jamfps/finishOSInstall.sh"
+cleanupOSInstallFilePath="/Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist"
+
+/bin/cat << EOF > "$finishOSInstallFilePath"
 #!/bin/bash
 ## First Run Script to remove the installer.
 ## Clean up files
@@ -272,20 +275,20 @@ fi
 /usr/local/jamf/bin/jamf recon
 ## Remove LaunchAgent and LaunchDaemon
 /bin/rm -f /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
-/bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+/bin/rm -f "$cleanupOSInstallFilePath"
 ## Remove Script
 /bin/rm -fr /usr/local/jamfps
 exit 0
 EOF
 
-/usr/sbin/chown root:admin /usr/local/jamfps/finishOSInstall.sh
-/bin/chmod 755 /usr/local/jamfps/finishOSInstall.sh
+/usr/sbin/chown root:admin "$finishOSInstallFilePath"
+/bin/chmod 755 "$finishOSInstallFilePath"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH DAEMON
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-/bin/cat << EOF > /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+/bin/cat << EOF > "$cleanupOSInstallFilePath"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -296,7 +299,7 @@ EOF
     <array>
         <string>/bin/bash</string>
         <string>-c</string>
-        <string>/usr/local/jamfps/finishOSInstall.sh</string>
+        <string>$finishOSInstallFilePath</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -305,8 +308,8 @@ EOF
 EOF
 
 ##Set the permission on the file just made.
-/usr/sbin/chown root:wheel /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
-/bin/chmod 644 /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+/usr/sbin/chown root:wheel "$cleanupOSInstallFilePath"
+/bin/chmod 644 "$cleanupOSInstallFilePath"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH AGENT FOR FILEVAULT AUTHENTICATED REBOOTS
@@ -319,7 +322,8 @@ elif [[ $osMajor -eq 10 ]]; then
     progArgument="osinstallersetupplaind"
 fi
 
-/bin/cat << EOP > /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+osinstallersetupdFilePath="/Library/LaunchAgents/com.apple.install.osinstallersetupd.plist"
+/bin/cat << EOP > "$osinstallersetupdFilePath"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -346,8 +350,8 @@ fi
 EOP
 
 ##Set the permission on the file just made.
-/usr/sbin/chown root:wheel /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
-/bin/chmod 644 /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+/usr/sbin/chown root:wheel "$osinstallersetupdFilePath"
+/bin/chmod 644 "$osinstallersetupdFilePath"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # APPLICATION
@@ -367,7 +371,7 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     ##Load LaunchAgent
     if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
         userID=$( /usr/bin/id -u "${currentUser}" )
-        /bin/launchctl bootstrap gui/"${userID}" /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+        /bin/launchctl bootstrap gui/"${userID}" "$osinstallersetupdFilePath"
     fi
     ##Begin Upgrade
     /bin/echo "Launching startosinstall..."
@@ -386,9 +390,9 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     /bin/sleep 3
 else
     ## Remove Script
-    /bin/rm -f /usr/local/jamfps/finishOSInstall.sh
-    /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
-    /bin/rm -f /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+    /bin/rm -f "$finishOSInstallFilePath"
+    /bin/rm -f "$cleanupOSInstallFilePath"
+    /bin/rm -f "$osinstallersetupdFilePath"
 
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macOSname. Please ensure you are connected to power and that you have at least 15GB of Free Space.
