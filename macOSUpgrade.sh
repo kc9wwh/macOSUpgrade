@@ -199,7 +199,7 @@ currentUserHomeDirectory=$( /usr/bin/dscl . -read "/users/$currentUser" NFSHomeD
 fvStatus=$( /usr/bin/fdesetup status | head -1 )
 
 ##Check if current user is an admin, and if not and FV is on add them to Group 80
-if ! /usr/bin/dscl . read /Groups/admin GroupMembership |  tr ' ' '\n' | grep -x "$currentUser" &>/dev/null ; then ; then
+if ! /usr/bin/dscl . read /Groups/admin GroupMembership |  tr ' ' '\n' | grep -x "$currentUser" &>/dev/null ; then
 	if [[ "$fvStatus" == "FileVault is On." ]] ; then
 		/bin/echo "FV is on and OS User is not an Admin.  Adding $currentUser to Admin group"
 		/usr/sbin/dseditgroup -o edit -a "$currentUser" -t user admin
