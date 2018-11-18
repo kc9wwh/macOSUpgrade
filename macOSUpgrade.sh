@@ -53,6 +53,8 @@
 # Created On: January 5th, 2017
 # Updated On: September 28th, 2018
 #
+# Updated On: November 18th, 2018 Daniel Shane for Admin rights fix and currentuser name fix
+#
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -188,7 +190,7 @@ cleanExit() {
 caffeinatePID=$!
 
 ##Get Current User
-currentUser=$( /usr/bin/stat -f %Su /dev/console )
+currentUser=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
 
 ##Get Current Users homefolder
 currentUserHomeDirectory=$( /usr/bin/dscl . -read "/users/$currentUser" NFSHomeDirectory | cut -d " " -f 2 )
@@ -196,9 +198,8 @@ currentUserHomeDirectory=$( /usr/bin/dscl . -read "/users/$currentUser" NFSHomeD
 ##Check if FileVault Enabled
 fvStatus=$( /usr/bin/fdesetup status | head -1 )
 
-##Check if current user is an admin
-/usr/bin/dscl . read /Groups/admin GroupMembership |  tr ' ' '\n' | grep -x "$currentUser"
-if [[ $? -ne 0 ]] ; then
+##Check if current user is an admin, and if not and FV is on add them to Group 80
+if ! /usr/bin/dscl . read /Groups/admin GroupMembership |  tr ' ' '\n' | grep -x "$currentUser" &>/dev/null ; then ; then
 	if [[ "$fvStatus" == "FileVault is On." ]] ; then
 		/bin/echo "FV is on and OS User is not an Admin.  Adding $currentUser to Admin group"
 		/usr/sbin/dseditgroup -o edit -a "$currentUser" -t user admin
