@@ -292,7 +292,7 @@ fi
 /bin/rm -fr /usr/local/jamfps
 ##Demote if user was not an admin before upgrade
 ##Get Current User
-currentUser=$( /usr/bin/stat -f %Su /dev/console )
+currentUser=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
 ##Get Current Users homefolder
 currentUserHomeDirectory=$( /usr/bin/dscl . -read "/users/$currentUser" NFSHomeDirectory | cut -d " " -f 2 )
 if [[ -e "$currentUserHomeDirectory"/.demoteafterupgrade ]] ; then
