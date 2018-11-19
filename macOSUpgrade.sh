@@ -189,24 +189,8 @@ cleanExit() {
 /usr/bin/caffeinate -dis &
 caffeinatePID=$!
 
-##Get Current User
-currentUser=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
-
-##Get Current Users homefolder
-currentUserHomeDirectory=$( /usr/bin/dscl . -read "/users/$currentUser" NFSHomeDirectory | cut -d " " -f 2 )
-
 ##Check if FileVault Enabled
 fvStatus=$( /usr/bin/fdesetup status | head -1 )
-
-##Check if current user is an admin, and if not and FV is on add them to Group 80
-if ! /usr/bin/dscl . read /Groups/admin GroupMembership |  tr ' ' '\n' | grep -x "$currentUser" &>/dev/null ; then
-	if [[ "$fvStatus" == "FileVault is On." ]] ; then
-		/bin/echo "FV is on and OS User is not an Admin.  Adding $currentUser to Admin group"
-		/usr/sbin/dseditgroup -o edit -a "$currentUser" -t user admin
-		/bin/echo "Demote token file added for $currentUser at $currentUserHomeDirectory/.demoteafterupgrade"
-		/usr/bin/touch "$currentUserHomeDirectory"/.demoteafterupgrade
-	fi
-fi
 
 ##Check if device is on battery or ac power
 pwrAdapter=$( /usr/bin/pmset -g ps )
@@ -291,15 +275,11 @@ fi
 ## Remove Script
 /bin/rm -fr /usr/local/jamfps
 ##Demote if user was not an admin before upgrade
-##Get Current User
-currentUser=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
-##Get Current Users homefolder
-currentUserHomeDirectory=$( /usr/bin/dscl . -read "/users/$currentUser" NFSHomeDirectory | cut -d " " -f 2 )
-if [[ -e "$currentUserHomeDirectory"/.demoteafterupgrade ]] ; then
-	/bin/echo "User was not an Admin before upgrade, Removing $currentUser from Admin group"
-	/usr/sbin/dseditgroup -o edit -d "$currentUser" -t user admin
-	/bin/echo "Demote token file removed for $currentUser at $currentUserHomeDirectory/.demoteafterupgrade"
-	rm -f "$currentUserHomeDirectory"/.demoteafterupgrade
+if [[ -e /Users/Shared/demoteafterupgrade ]] ; then
+	demoteUser=$( /bin/cat /Users/Shared/demoteafterupgrade | head -n1 )
+	/bin/echo "User was not an Admin before upgrade, Removing $demoteUser from Admin group"
+	/usr/sbin/dseditgroup -o edit -d "$demoteUser" -t user admin
+	rm -f /Users/Shared/demoteafterupgrade
 fi	
 exit 0
 EOL
@@ -391,6 +371,16 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
         /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
         jamfHelperPID=$!
     fi
+	##Promote Current User to admin if needed
+	currentUser=$(/usr/bin/python -c 'from SystemConfiguration import SCDynamicStoreCopyConsoleUser; import sys; username = (SCDynamicStoreCopyConsoleUser(None, None, None) or [None])[0]; username = [username,""][username in [u"loginwindow", None, u""]]; sys.stdout.write(username + "\n");')
+	if ! dseditgroup -o checkmember -m "$currentUser" -t group admin | grep "yes" ; then
+		if [[ "$fvStatus" == "FileVault is On." ]] ; then
+			/bin/echo "FV is on and OS User is not an Admin.  Adding $currentUser to Admin group"
+			/usr/sbin/dseditgroup -o edit -a "$currentUser" -t user admin
+			/bin/echo "Demote token file added for $currentUser at /Users/Shared/demoteafterupgrade"
+			echo "$currentUser" > /Users/Shared/demoteafterupgrade
+		fi
+	fi
     ##Load LaunchAgent
     if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
         userID=$( /usr/bin/id -u "${currentUser}" )
