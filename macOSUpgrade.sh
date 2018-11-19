@@ -275,11 +275,11 @@ fi
 ## Remove Script
 /bin/rm -fr /usr/local/jamfps
 ##Demote if user was not an admin before upgrade
-if [[ -e /Users/Shared/demoteafterupgrade ]] ; then
-	demoteUser=$( /bin/cat /Users/Shared/demoteafterupgrade | head -n1 )
+if [[ -e /Users/Shared/.demoteafterupgrade ]] ; then
+	demoteUser=$( /bin/cat /Users/Shared/.demoteafterupgrade | head -n1 )
 	/bin/echo "User was not an Admin before upgrade, Removing $demoteUser from Admin group"
 	/usr/sbin/dseditgroup -o edit -d "$demoteUser" -t user admin
-	rm -f /Users/Shared/demoteafterupgrade
+	rm -f /Users/Shared/.demoteafterupgrade
 fi	
 exit 0
 EOL
@@ -377,8 +377,8 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
 		if [[ "$fvStatus" == "FileVault is On." ]] ; then
 			/bin/echo "FV is on and OS User is not an Admin.  Adding $currentUser to Admin group"
 			/usr/sbin/dseditgroup -o edit -a "$currentUser" -t user admin
-			/bin/echo "Demote token file added for $currentUser at /Users/Shared/demoteafterupgrade"
-			echo "$currentUser" > /Users/Shared/demoteafterupgrade
+			/bin/echo "Demote token file added for $currentUser at /Users/Shared/.demoteafterupgrade"
+			echo "$currentUser" > /Users/Shared/.demoteafterupgrade
 		fi
 	fi
     ##Load LaunchAgent
