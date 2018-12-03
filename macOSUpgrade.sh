@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.7.2.1
+# VERSION: v2.7.3.0
 #
 # REQUIREMENTS:
 #           - Jamf Pro
@@ -52,6 +52,7 @@
 #
 # Created On: January 5th, 2017
 # Updated On: September 28th, 2018
+# Feature Added On: November 08th, 2018, By Lincoln Phillips - Restricted Software Bypass so that restrictions can be kepted in place and still be able to upgarde macOS from self service.
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -108,6 +109,13 @@ fi
 ##Use Parameter 9 in the JSS.
 userDialog="$9"
 if [[ ${userDialog:=0} != 1 ]]; then userDialog=0 ; fi
+
+##Temporarily disable (Restricted Software) for the upgarde to work.
+##This disables the Jamf Client until a restart just before the software upgarde.
+##Default leaves Jamf Client enabled.
+##Options: 0 = Disabled / 1 = Enabled
+turnOffRestrictedSoftware="${10}"
+if [[ "${turnOffRestrictedSoftware:=1}" != 0 ]]; then turnOffRestrictedSoftware=1 ; fi
 
 ##Title of OS
 ##Example: macOS High Sierra
@@ -177,6 +185,45 @@ verifyChecksum() {
 cleanExit() {
     /bin/kill "${caffeinatePID}"
     exit "$1"
+}
+
+rsOSInstaller() {
+/bin/echo "#!/bin/sh
+## Starting OSInstaller Process
+/bin/sleep 10
+## Unloading Jamf Pro Client to stop restricted software from blocking the upgrade
+launchctl unload /Library/LaunchDaemons/com.jamfsoftware.jamf.daemon.plist >> $osinstallLogfile
+## Launching startosinstall...
+\"$OSInstaller/Contents/Resources/startosinstall\" $eraseopt $OSInstallerVer --agreetolicense --nointeraction --pidtosignal \"$jamfHelperPID\" >> \"$osinstallLogfile\"
+exit 0" > /usr/local/jamfps/runOSInstall.sh
+    
+    ##Set the permission on the file just made.
+    /usr/sbin/chown root:admin /usr/local/jamfps/runOSInstall.sh
+    /bin/chmod 755 /usr/local/jamfps/runOSInstall.sh
+
+/bin/cat << EOD > /Library/LaunchAgents/com.jamfps.runOSInstall.plist
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>Label</key>
+		<string>com.jamfps.runOSInstall</string>
+		<key>Program</key>
+		<string>/usr/local/jamfps/runOSInstall.sh</string>
+		<key>RunAtLoad</key>
+		<true/>
+	</dict>
+</plist>
+EOD
+
+##Set the permission on the file just made.
+/usr/sbin/chown root:wheel /Library/LaunchAgents/com.jamfps.runOSInstall.plist
+/bin/chmod 644 /Library/LaunchAgents/com.jamfps.runOSInstall.plist
+
+##Launch LaunchAgent
+launchctl load "/Library/LaunchAgents/com.jamfps.runOSInstall.plist"
+
+/bin/echo "   Restricted Software setup completed exiting setup and starting OS Install process."
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -263,6 +310,13 @@ fi
 
 /bin/mkdir -p /usr/local/jamfps
 
+##Check if Restricted Software was disable and clean up if enabled.
+if [[ $turnOffRestrictedSoftware == 0 ]]; then
+    rmRestrictedSoftware="/bin/rm -f /Library/LaunchAgents/com.jamfps.runOSInstall.plist"
+else
+    rmRestrictedSoftware=""
+fi
+
 /bin/echo "#!/bin/bash
 ## First Run Script to remove the installer.
 ## Clean up files
@@ -270,8 +324,9 @@ fi
 /bin/sleep 2
 ## Update Device Inventory
 /usr/local/jamf/bin/jamf recon
-## Remove LaunchDaemon
+## Remove LaunchDaemons
 /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+\"$rmRestrictedSoftware\"
 ## Remove Script
 /bin/rm -fr /usr/local/jamfps
 exit 0" > /usr/local/jamfps/finishOSInstall.sh
@@ -374,14 +429,22 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
         eraseopt='--eraseinstall'
         /bin/echo "   Script is configured for Erase and Install of macOS."
     fi
-
-    osinstallLogfile="/var/log/startosinstall.log"
-    if [ "$versionMajor" -ge 14 ]; then
-        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
-    else
-        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --applicationpath "\"$OSInstaller\"" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
+    ##Check os installer version.
+    OSInstallerVer="--applicationpath \"$OSInstaller\""
+    if [ "$versionMajor" -ge 13 ]; then
+        if [ "$versionMinor" -ge 6 ]; then
+            OSInstallerVer=""
+        fi
     fi
-    /bin/sleep 3
+    osinstallLogfile="/var/log/startosinstall.log"
+    ##Check Restricted Software status
+    if [[ $turnOffRestrictedSoftware == 0 ]]; then
+        /bin/echo "   Script is configured for disabling Restricted Software."
+        rsOSInstaller
+    else
+        eval /usr/bin/nohup "$OSInstaller/Contents/Resources/startosinstall" $eraseopt $OSInstallerVer --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
+        /bin/sleep 3
+    fi
 else
     ## Remove Script
     /bin/rm -f /usr/local/jamfps/finishOSInstall.sh
