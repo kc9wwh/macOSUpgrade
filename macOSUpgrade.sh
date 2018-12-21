@@ -64,14 +64,14 @@
 OSInstaller="$4"
 
 ##Version of Installer OS. Use Parameter 5 in the JSS, or specify here.
-##Example Command: /usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "/Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallInfo.plistr"
+##Example Command: /usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "/Applications/Install macOS High Sierra.app/Contents/SharedSupport/InstallInfo.plist"
 ##Example: 10.12.5
 version="$5"
 versionMajor=$( /bin/echo "$version" | /usr/bin/awk -F. '{print $2}' )
 versionMinor=$( /bin/echo "$version" | /usr/bin/awk -F. '{print $3}' )
 
 ##Custom Trigger used for download. Use Parameter 6 in the JSS, or specify here.
-##This should match a custom trigger for a policy that contains just the 
+##This should match a custom trigger for a policy that contains just the
 ##MacOS installer. Make sure that the policy is scoped properly
 ##to relevant computers and/or users, or else the custom trigger will
 ##not be picked up. Use a separate policy for the script itself.
