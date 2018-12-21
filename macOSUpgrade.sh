@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.7.2.1
+# VERSION: v2.7.2.2
 #
 # REQUIREMENTS:
 #           - Jamf Pro
@@ -51,7 +51,7 @@
 # Written by: Joshua Roskos | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: September 28th, 2018
+# Updated On: October 16th, 2018
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -270,7 +270,8 @@ fi
 /bin/sleep 2
 ## Update Device Inventory
 /usr/local/jamf/bin/jamf recon
-## Remove LaunchDaemon
+## Remove LaunchAgent and LaunchDaemon
+/bin/rm -f /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
 /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
 ## Remove Script
 /bin/rm -fr /usr/local/jamfps
