@@ -110,8 +110,7 @@ userDialog="$9"
 if [[ ${userDialog:=0} != 1 ]]; then userDialog=0 ; fi
 
 ##Title of OS
-##Example: macOS High Sierra
-macOSname=$(/bin/echo "$OSInstaller" | /usr/bin/sed 's/^\/Applications\/Install \(.*\)\.app$/\1/')
+macOSname=$(/bin/echo "$OSInstaller" | /usr/bin/sed -E 's/(.+)?Install(.+)\.app\/?/\2/' | /usr/bin/xargs)
 
 ##Title to be used for userDialog (only applies to Utility Window)
 title="$macOSname Upgrade"
