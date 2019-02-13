@@ -274,7 +274,7 @@ cleanupOSInstallFilePath="/Library/LaunchDaemons/com.jamfps.cleanupOSInstall.pli
 ## Update Device Inventory
 /usr/local/jamf/bin/jamf recon
 ## Remove LaunchAgent and LaunchDaemon
-/bin/rm -f /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+/bin/rm -f "$osinstallersetupdFilePath"
 /bin/rm -f "$cleanupOSInstallFilePath"
 ## Remove Script
 /bin/rm -fr /usr/local/jamfps
