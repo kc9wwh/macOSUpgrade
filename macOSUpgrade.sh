@@ -173,6 +173,20 @@ verifyChecksum() {
     fi
 }
 
+cleanupUnnecessaryOSInstaller() {
+    ignoreOSInstaller="$1"
+
+    IFS_BACKUP=$IFS
+    IFS=$'\n'
+    for removingOSInstaller in $(/usr/bin/find -E /Applications -type d -regex "^/Applications/Install macOS.*\.app" | /usr/bin/grep -v "$ignoreOSInstaller"); do
+        /bin/echo "Removing $removingOSInstaller ..."
+        /bin/rm -rf "$removingOSInstaller"
+    done
+
+    IFS=$IFS_BACKUP
+    return
+}
+
 cleanExit() {
     /bin/kill "${caffeinatePID}"
     exit "$1"
@@ -352,6 +366,7 @@ EOP
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
+    cleanupUnnecessaryOSInstaller "$OSInstaller"
     ##Launch jamfHelper
     if [ ${userDialog} -eq 0 ]; then
         /bin/echo "Launching jamfHelper as FullScreen..."
