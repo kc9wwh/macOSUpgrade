@@ -369,40 +369,7 @@ fi
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
-    ##Launch jamfHelper
-    if [ ${userDialog} -eq 0 ]; then
-        /bin/echo "Launching jamfHelper as FullScreen..."
-        /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
-        jamfHelperPID=$!
-    else
-        /bin/echo "Launching jamfHelper as Utility Window..."
-        /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
-        jamfHelperPID=$!
-    fi
-    ##Load LaunchAgent
-    if [[ ${fvStatus} == "FileVault is On." ]] && \
-       [[ ${currentUser} != "root" ]] && \
-       [[ ${cancelFVAuthReboot} -eq 0 ]] ; then
-        userID=$( /usr/bin/id -u "${currentUser}" )
-        /bin/launchctl bootstrap gui/"${userID}" "$osinstallersetupdAgentSettingsFilePath"
-    fi
-    ##Begin Upgrade
-    /bin/echo "Launching startosinstall..."
-    ##Check if eraseInstall is Enabled
-    if [[ $eraseInstall == 1 ]]; then
-        eraseopt='--eraseinstall'
-        /bin/echo "   Script is configured for Erase and Install of macOS."
-    fi
-
-    osinstallLogfile="/var/log/startosinstall.log"
-    if [ "$versionMajor" -ge 14 ]; then
-        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
-    else
-        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --applicationpath "\"$OSInstaller\"" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
-    fi
-    /bin/sleep 3
-else
+if ! [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     ## Remove Script
     /bin/rm -f "$finishOSInstallScriptFilePath"
     /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath"
@@ -428,7 +395,9 @@ else
 fi
 
 ##Load LaunchAgent
-if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
+if [[ ${fvStatus} == "FileVault is On." ]] && \
+   [[ ${currentUser} != "root" ]] && \
+   [[ ${cancelFVAuthReboot} -eq 0 ]] ; then
     userID=$( /usr/bin/id -u "${currentUser}" )
     /bin/launchctl bootstrap gui/"${userID}" /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
 fi
