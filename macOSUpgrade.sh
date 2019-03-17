@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.7.3
+# VERSION: v2.7.2.3
 #
 # REQUIREMENTS:
 #           - Jamf Pro
@@ -51,7 +51,7 @@
 # Written by: Joshua Roskos | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: Febrary 18th, 2019
+# Updated On: March 16th, 2019
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -333,14 +333,7 @@ if [ "$cancelFVAuthReboot" = 'no' ]; then
         progArgument="osinstallersetupplaind"
     fi
 
-##Determine Program Argument
-if [[ $osMajor -ge 11 ]]; then
-    progArgument="osinstallersetupd"
-elif [[ $osMajor -eq 10 ]]; then
-    progArgument="osinstallersetupplaind"
-fi
-
-/bin/cat << EOP > "$osinstallersetupdAgentSettingsFilePath"
+    /bin/cat << EOP > "$osinstallersetupdAgentSettingsFilePath"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -366,9 +359,11 @@ fi
 </plist>
 EOP
 
-##Set the permission on the file just made.
-/usr/sbin/chown root:wheel "$osinstallersetupdAgentSettingsFilePath"
-/bin/chmod 644 "$osinstallersetupdAgentSettingsFilePath"
+    ##Set the permission on the file just made.
+    /usr/sbin/chown root:wheel "$osinstallersetupdAgentSettingsFilePath"
+    /bin/chmod 644 "$osinstallersetupdAgentSettingsFilePath"
+
+fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # APPLICATION
