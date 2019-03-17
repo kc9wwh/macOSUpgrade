@@ -140,6 +140,15 @@ dlPosition="ul"
 ##Default is macOS Installer logo which is included in the staged installer package
 icon="$OSInstaller/Contents/Resources/InstallAssistant.icns"
 
+##First run script to remove the installers after run installer
+finishOSInstallScriptFilePath="/usr/local/jamfps/finishOSInstall.sh"
+
+##Launch deamon settings for first run script to remove the installers after run installer
+osinstallersetupdDaemonSettingsFilePath="/Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist"
+
+##Launch agent settings for filevault authenticated reboots
+osinstallersetupdAgentSettingsFilePath="/Library/LaunchAgents/com.apple.install.osinstallersetupd.plist"
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -267,28 +276,30 @@ fi
 
 /bin/mkdir -p /usr/local/jamfps
 
-/bin/echo "#!/bin/bash
+/bin/cat << EOF > "$finishOSInstallScriptFilePath"
+#!/bin/bash
 ## First Run Script to remove the installer.
 ## Clean up files
-/bin/rm -fr \"$OSInstaller\"
+/bin/rm -fr "$OSInstaller"
 /bin/sleep 2
 ## Update Device Inventory
 /usr/local/jamf/bin/jamf recon
 ## Remove LaunchAgent and LaunchDaemon
-/bin/rm -f /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
-/bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+/bin/rm -f "$osinstallersetupdAgentSettingsFilePath"
+/bin/rm -f "$osinstallersetupdDaemonSettingsFilePath"
 ## Remove Script
 /bin/rm -fr /usr/local/jamfps
-exit 0" > /usr/local/jamfps/finishOSInstall.sh
+exit 0
+EOF
 
-/usr/sbin/chown root:admin /usr/local/jamfps/finishOSInstall.sh
-/bin/chmod 755 /usr/local/jamfps/finishOSInstall.sh
+/usr/sbin/chown root:admin "$finishOSInstallScriptFilePath"
+/bin/chmod 755 "$finishOSInstallScriptFilePath"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH DAEMON
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-/bin/cat << EOF > /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+/bin/cat << EOF > "$osinstallersetupdDaemonSettingsFilePath"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -299,7 +310,7 @@ exit 0" > /usr/local/jamfps/finishOSInstall.sh
     <array>
         <string>/bin/bash</string>
         <string>-c</string>
-        <string>/usr/local/jamfps/finishOSInstall.sh</string>
+        <string>$finishOSInstallScriptFilePath</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -308,8 +319,8 @@ exit 0" > /usr/local/jamfps/finishOSInstall.sh
 EOF
 
 ##Set the permission on the file just made.
-/usr/sbin/chown root:wheel /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
-/bin/chmod 644 /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
+/usr/sbin/chown root:wheel "$osinstallersetupdDaemonSettingsFilePath"
+/bin/chmod 644 "$osinstallersetupdDaemonSettingsFilePath"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH AGENT FOR FILEVAULT AUTHENTICATED REBOOTS
@@ -322,7 +333,14 @@ if [ "$cancelFVAuthReboot" = 'no' ]; then
         progArgument="osinstallersetupplaind"
     fi
 
-    /bin/cat << EOP > /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+##Determine Program Argument
+if [[ $osMajor -ge 11 ]]; then
+    progArgument="osinstallersetupd"
+elif [[ $osMajor -eq 10 ]]; then
+    progArgument="osinstallersetupplaind"
+fi
+
+/bin/cat << EOP > "$osinstallersetupdAgentSettingsFilePath"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -348,10 +366,9 @@ if [ "$cancelFVAuthReboot" = 'no' ]; then
 </plist>
 EOP
 
-    ##Set the permission on the file just made.
-    /usr/sbin/chown root:wheel /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
-    /bin/chmod 644 /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
-fi
+##Set the permission on the file just made.
+/usr/sbin/chown root:wheel "$osinstallersetupdAgentSettingsFilePath"
+/bin/chmod 644 "$osinstallersetupdAgentSettingsFilePath"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # APPLICATION
@@ -373,7 +390,7 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
        [[ ${currentUser} != "root" ]] && \
        [[ ${cancelFVAuthReboot} -eq 0 ]] ; then
         userID=$( /usr/bin/id -u "${currentUser}" )
-        /bin/launchctl bootstrap gui/"${userID}" /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+        /bin/launchctl bootstrap gui/"${userID}" "$osinstallersetupdAgentSettingsFilePath"
     fi
     ##Begin Upgrade
     /bin/echo "Launching startosinstall..."
@@ -392,15 +409,50 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     /bin/sleep 3
 else
     ## Remove Script
-    /bin/rm -f /usr/local/jamfps/finishOSInstall.sh
-    /bin/rm -f /Library/LaunchDaemons/com.jamfps.cleanupOSInstall.plist
-    /bin/rm -f /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+    /bin/rm -f "$finishOSInstallScriptFilePath"
+    /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath"
+    /bin/rm -f "$osinstallersetupdAgentSettingsFilePath"
 
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macOSname. Please ensure you are connected to power and that you have at least 15GB of Free Space.
 
     If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
 
+    cleanExit 1
 fi
+
+##Launch jamfHelper
+if [ ${userDialog} -eq 0 ]; then
+    /bin/echo "Launching jamfHelper as FullScreen..."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
+    jamfHelperPID=$!
+else
+    /bin/echo "Launching jamfHelper as Utility Window..."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
+    jamfHelperPID=$!
+fi
+
+##Load LaunchAgent
+if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
+    userID=$( /usr/bin/id -u "${currentUser}" )
+    /bin/launchctl bootstrap gui/"${userID}" /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
+fi
+
+##Begin Upgrade
+/bin/echo "Launching startosinstall..."
+
+##Check if eraseInstall is Enabled
+if [[ $eraseInstall == 1 ]]; then
+    eraseopt='--eraseinstall'
+    /bin/echo "   Script is configured for Erase and Install of macOS."
+fi
+
+osinstallLogfile="/var/log/startosinstall.log"
+if [ "$versionMajor" -ge 14 ]; then
+    eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
+else
+    eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --applicationpath "\"$OSInstaller\"" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
+fi
+/bin/sleep 3
 
 cleanExit 0
