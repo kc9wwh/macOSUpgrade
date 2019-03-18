@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.7.2.4
+# VERSION: v2.7.2.3
 #
 # REQUIREMENTS:
 #           - Jamf Pro
