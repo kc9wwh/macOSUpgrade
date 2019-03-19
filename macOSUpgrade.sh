@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.7.2.2
+# VERSION: v2.7.2.3
 #
 # REQUIREMENTS:
 #           - Jamf Pro
@@ -51,7 +51,7 @@
 # Written by: Joshua Roskos | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: October 16th, 2018
+# Updated On: March 18th, 2018
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -362,38 +362,7 @@ EOP
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
-    ##Launch jamfHelper
-    if [ ${userDialog} -eq 0 ]; then
-        /bin/echo "Launching jamfHelper as FullScreen..."
-        /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
-        jamfHelperPID=$!
-    else
-        /bin/echo "Launching jamfHelper as Utility Window..."
-        /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
-        jamfHelperPID=$!
-    fi
-    ##Load LaunchAgent
-    if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
-        userID=$( /usr/bin/id -u "${currentUser}" )
-        /bin/launchctl bootstrap gui/"${userID}" "$osinstallersetupdAgentSettingsFilePath"
-    fi
-    ##Begin Upgrade
-    /bin/echo "Launching startosinstall..."
-    ##Check if eraseInstall is Enabled
-    if [[ $eraseInstall == 1 ]]; then
-        eraseopt='--eraseinstall'
-        /bin/echo "   Script is configured for Erase and Install of macOS."
-    fi
-
-    osinstallLogfile="/var/log/startosinstall.log"
-    if [ "$versionMajor" -ge 14 ]; then
-        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
-    else
-        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --applicationpath "\"$OSInstaller\"" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
-    fi
-    /bin/sleep 3
-else
+if ! [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
     ## Remove Script
     /bin/rm -f "$finishOSInstallScriptFilePath"
     /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath"
