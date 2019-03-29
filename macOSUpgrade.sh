@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.7.2.3
+# VERSION: v2.7.2.4
 #
 # REQUIREMENTS:
 #           - Jamf Pro
@@ -51,7 +51,7 @@
 # Written by: Joshua Roskos | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: March 18th, 2018
+# Updated On: March 19th, 2019
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -108,6 +108,11 @@ fi
 ##Use Parameter 9 in the JSS.
 userDialog="$9"
 if [[ ${userDialog:=0} != 1 ]]; then userDialog=0 ; fi
+
+##Enter 1 (or not 0) for cancel Filevault authenticated reboots, 0 for try to Filevault authenticated reboots(Default)
+##Use Parameter 10 in the JSS.
+cancelFVAuthReboot="${10}"
+if [[ ${cancelFVAuthReboot:=0} != 0 ]]; then cancelFVAuthReboot=1 ; fi
 
 ##Title of OS
 macOSname=$(/bin/echo "$OSInstaller" | /usr/bin/sed -E 's/(.+)?Install(.+)\.app\/?/\2/' | /usr/bin/xargs)
@@ -320,15 +325,15 @@ EOF
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH AGENT FOR FILEVAULT AUTHENTICATED REBOOTS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+if [ "$cancelFVAuthReboot" = 'no' ]; then
+    ##Determine Program Argument
+    if [[ $osMajor -ge 11 ]]; then
+        progArgument="osinstallersetupd"
+    elif [[ $osMajor -eq 10 ]]; then
+        progArgument="osinstallersetupplaind"
+    fi
 
-##Determine Program Argument
-if [[ $osMajor -ge 11 ]]; then
-    progArgument="osinstallersetupd"
-elif [[ $osMajor -eq 10 ]]; then
-    progArgument="osinstallersetupplaind"
-fi
-
-/bin/cat << EOP > "$osinstallersetupdAgentSettingsFilePath"
+    /bin/cat << EOP > "$osinstallersetupdAgentSettingsFilePath"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -354,9 +359,11 @@ fi
 </plist>
 EOP
 
-##Set the permission on the file just made.
-/usr/sbin/chown root:wheel "$osinstallersetupdAgentSettingsFilePath"
-/bin/chmod 644 "$osinstallersetupdAgentSettingsFilePath"
+    ##Set the permission on the file just made.
+    /usr/sbin/chown root:wheel "$osinstallersetupdAgentSettingsFilePath"
+    /bin/chmod 644 "$osinstallersetupdAgentSettingsFilePath"
+
+fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # APPLICATION
@@ -388,7 +395,9 @@ else
 fi
 
 ##Load LaunchAgent
-if [[ ${fvStatus} == "FileVault is On." ]] && [[ ${currentUser} != "root" ]]; then
+if [[ ${fvStatus} == "FileVault is On." ]] && \
+   [[ ${currentUser} != "root" ]] && \
+   [[ ${cancelFVAuthReboot} -eq 0 ]] ; then
     userID=$( /usr/bin/id -u "${currentUser}" )
     /bin/launchctl bootstrap gui/"${userID}" /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
 fi
