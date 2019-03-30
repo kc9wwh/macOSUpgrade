@@ -329,7 +329,7 @@ EOF
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH AGENT FOR FILEVAULT AUTHENTICATED REBOOTS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-if [ "$cancelFVAuthReboot" = 'no' ]; then
+if [ "$cancelFVAuthReboot" -eq 0 ]; then
     ##Determine Program Argument
     if [[ $osMajor -ge 11 ]]; then
         progArgument="osinstallersetupd"
