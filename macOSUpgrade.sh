@@ -2,7 +2,7 @@
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
-# Copyright (c) 2018 Jamf.  All rights reserved.
+# Copyright (c) 2019 Jamf.  All rights reserved.
 #
 #       Redistribution and use in source and binary forms, with or without
 #       modification, are permitted provided that the following conditions are met:
@@ -35,7 +35,7 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.7.3
+# VERSION: v2.7.4
 #
 # REQUIREMENTS:
 #           - Jamf Pro
@@ -51,7 +51,7 @@
 # Written by: Joshua Roskos | Jamf
 #
 # Created On: January 5th, 2017
-# Updated On: March 29th, 2019
+# Updated On: March 30th, 2019
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -109,10 +109,14 @@ fi
 userDialog="$9"
 if [[ ${userDialog:=0} != 1 ]]; then userDialog=0 ; fi
 
-##Enter 1 (or not 0) for cancel Filevault authenticated reboots, 0 for try to Filevault authenticated reboots(Default)
-##Use Parameter 10 in the JSS.
-cancelFVAuthReboot="${10}"
-if [[ ${cancelFVAuthReboot:=0} != 0 ]]; then cancelFVAuthReboot=1 ; fi
+# Control for auth reboot execution.
+if [ "$versionMajor" -ge 14 ]; then
+    # Installer of macOS 10.14 or later set cancel to auth reboot.
+    cancelFVAuthReboot=1
+else
+    # Installer of macOS 10.13 or earlier try to do auth reboot.
+    cancelFVAuthReboot=0
+fi
 
 ##Title of OS
 macOSname=$(/bin/echo "$OSInstaller" | /usr/bin/sed -E 's/(.+)?Install(.+)\.app\/?/\2/' | /usr/bin/xargs)
@@ -325,7 +329,7 @@ EOF
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH AGENT FOR FILEVAULT AUTHENTICATED REBOOTS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-if [ "$cancelFVAuthReboot" = 'no' ]; then
+if [ "$cancelFVAuthReboot" -eq 0 ]; then
     ##Determine Program Argument
     if [[ $osMajor -ge 11 ]]; then
         progArgument="osinstallersetupd"
