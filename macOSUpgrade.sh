@@ -412,7 +412,7 @@ fi
 ##Check if eraseInstall is Enabled
 if [[ $eraseInstall == 1 ]]; then
     eraseopt='--eraseinstall'
-    /bin/echo "   Script is configured for Erase and Install of macOS."
+    /bin/echo "Script is configured for Erase and Install of macOS."
 fi
 
 osinstallLogfile="/var/log/startosinstall.log"
