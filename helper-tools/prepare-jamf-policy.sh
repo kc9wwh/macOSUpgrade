@@ -1,7 +1,7 @@
 #!/bin/bash
 #-
 #- Usage
-#-   $ prepare-jamf-policy.sh "/path/to/Install macOS.app"
+#-   $ ./prepare-jamf-policy.sh "/path/to/Install macOS.app"
 #-   Wait seconds, getting checksumm...
 #-
 #-   =====================================================
