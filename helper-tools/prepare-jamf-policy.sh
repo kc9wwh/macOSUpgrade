@@ -50,12 +50,12 @@ fi
 
 if [ ! -f  "${OSInstaller}/Contents/SharedSupport/InstallESD.dmg" ]; then
     echo "Not found ${OSInstaller}/Contents/SharedSupport/InstallESD.dmg"
-    echo "Thi is not expected installer type."
+    echo "This is not expected installer type."
     exit 1
 fi
 
 osversion=$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "${OSInstaller}/Contents/SharedSupport/InstallInfo.plist")
-echo "Wait seconds, getting checksumm..."
+echo "Wait seconds, getting checksum..."
 checksum=$(/sbin/md5 -r "${OSInstaller}/Contents/SharedSupport/InstallESD.dmg" | /usr/bin/awk '{print $1}')
 
 cat <<_RESULT
