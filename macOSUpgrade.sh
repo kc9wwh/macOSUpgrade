@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
@@ -111,7 +111,7 @@ if [[ ${userDialog:=0} != 1 ]]; then userDialog=0 ; fi
 
 ##Specify path to postinstallation package. Use Parameter 10 in the JSS
 ##Example: /Users/Shared/postinstall.pkg
-installPkg="$10"
+installPkg="${10}"
 
 ##Title of OS
 ##Example: macOS High Sierra
@@ -379,7 +379,7 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
         /bin/echo "   Script is configured for Erase and Install of macOS."
     fi
     ##Check if installPackage is Enabled
-    if [ ! -z "${installPkg}" ];
+    if [ ! -z "${installPkg}" ]; then
         pkgopt="--installpackage ${installPkg}"
         /bin/echo "   Script is configured for installing extra package."
     fi
