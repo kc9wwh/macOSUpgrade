@@ -2,7 +2,7 @@
 #-
 #- Usage
 #-   $ ./prepare-jamf-policy.sh "/path/to/Install macOS.app"
-#-   Wait seconds, getting checksumm...
+#-   Wait seconds, getting checksum...
 #-
 #-   =====================================================
 #-   Upgrade macOS Parameters:
