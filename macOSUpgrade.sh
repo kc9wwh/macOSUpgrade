@@ -109,6 +109,10 @@ fi
 userDialog="$9"
 if [[ ${userDialog:=0} != 1 ]]; then userDialog=0 ; fi
 
+##Specify path to postinstallation package. Use Parameter 10 in the JSS
+##Example: /Users/Shared/postinstall.pkg
+installPkg="$10"
+
 ##Title of OS
 ##Example: macOS High Sierra
 macOSname=$(/bin/echo "$OSInstaller" | /usr/bin/sed 's/^\/Applications\/Install \(.*\)\.app$/\1/')
@@ -120,8 +124,8 @@ title="$macOSname Upgrade"
 heading="Please wait as we prepare your computer for $macOSname..."
 
 ##Title to be used for userDialog
-description="This process will take approximately 5-10 minutes.
-Once completed your computer will reboot and begin the upgrade."
+description="Your computer will reboot in 5-10 minutes and begin the upgrade.
+This process will take approximately 30-40 minutes."
 
 ##Description to be used prior to downloading the OS installer
 dldescription="We need to download $macOSname to your computer, this will \
@@ -261,7 +265,7 @@ fi
 # CREATE FIRST BOOT SCRIPT
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-/bin/mkdir -p /usr/local/jamfps
+/bin/mkdir /usr/local/jamfps
 
 /bin/echo "#!/bin/bash
 ## First Run Script to remove the installer.
@@ -374,12 +378,16 @@ if [[ ${pwrStatus} == "OK" ]] && [[ ${spaceStatus} == "OK" ]]; then
         eraseopt='--eraseinstall'
         /bin/echo "   Script is configured for Erase and Install of macOS."
     fi
+    ##Check if installPackage is Enabled
+    if [ ! -z "${installPkg}" ];
+        pkgopt="--installpackage ${installPkg}"
+        /bin/echo "   Script is configured for installing extra package."
+    fi
 
-    osinstallLogfile="/var/log/startosinstall.log"
     if [ "$versionMajor" -ge 14 ]; then
-        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
+        "$OSInstaller/Contents/Resources/startosinstall" $pkgopt $eraseopt --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" &
     else
-        eval /usr/bin/nohup "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --applicationpath "\"$OSInstaller\"" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" &
+        "$OSInstaller/Contents/Resources/startosinstall" $pkgopt $eraseopt --applicationpath "$OSInstaller" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" &
     fi
     /bin/sleep 3
 else
@@ -390,7 +398,6 @@ else
 
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macOSname. Please ensure you are connected to power and that you have at least 15GB of Free Space.
-
     If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
 
 fi
