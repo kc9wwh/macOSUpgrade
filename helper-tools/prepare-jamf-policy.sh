@@ -17,9 +17,6 @@
 #-   Done. ~/Desktop/Install macOS Mojave.app.10.14.pkg
 #-   $
 #-
-#-   You can get full-size installer with installinstallmacos.py.
-#-   https://github.com/munki/macadmin-scripts/blob/master/installinstallmacos.py
-#-
 
 if [ $# -eq 0 ]; then
     # Show help
@@ -37,8 +34,6 @@ if [ ! -d  "${OSInstaller}/Contents/SharedSupport" ]; then
     echo "This installer looks like kind of 'stub' installer."
     /usr/bin/du -sh "${OSInstaller}"
     echo "Use full size intaller."
-    echo "You can get full-size installer with installinstallmacos.py"
-    echo "https://github.com/munki/macadmin-scripts/blob/master/installinstallmacos.py"
     exit 1
 fi
 
