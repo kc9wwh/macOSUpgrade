@@ -28,8 +28,9 @@ Starting with macOS Sierra, Apple has begun enforcing the way in which you can s
 When you start deploying this script to your end-users you will want to ensure that it is scoped properly. At that very least, you'll want to create a Smart Group to determine if the target system(s) meet the system requirements for the macOS upgrade.
 
 * [laurentpertois/High-Sierra-Compatibility-Checker](https://github.com/laurentpertois/High-Sierra-Compatibility-Checker)
+* [laurentpertois/Mojave-Compatibility-Checker](https://github.com/laurentpertois/Mojave-Compatibility-Checker)
 
-Also, if you are encrypting your macOS devices (which I hope you are), you will want to ensure your scope also includes devices that are not currently encrypting. While the devices are encrypting, you will not be able to upgrade to macOS High Sierra until encryption is complete.
+Also, if you are encrypting your macOS devices (which I hope you are), you will want to ensure your scope also includes devices that are not currently encrypting. While the devices are encrypting, you will not be able to upgrade macOS until after encryption is completed.
 
 | And/Or | Criteria | Operator | Value |
 | :---: | :---: | :---: | :---: |
