@@ -173,13 +173,13 @@ wait_for_ac_power() {
     while [[ "$acPowerWaitTimer" -gt "0" ]]; do
         if /usr/bin/pmset -g ps | grep "AC Power" > /dev/null ; then
             /bin/echo "Power Check: OK - AC Power Detected"
-            ps -p "$jamfHelperPID" > /dev/null && kill "$jamfHelperPID"; wait "$jamfHelperPID" 2>/dev/null
+            ps -p "$jamfHelperPowerPID" > /dev/null && kill "$jamfHelperPowerPID"; wait "$jamfHelperPowerPID" 2>/dev/null
             return
         fi
         sleep 1
         ((acPowerWaitTimer--))
     done
-    ps -p "$jamfHelperPID" > /dev/null && kill "$jamfHelperPID"; wait "$jamfHelperPID" 2>/dev/null
+    ps -p "$jamfHelperPowerPID" > /dev/null && kill "$jamfHelperPowerPID"; wait "$jamfHelperPowerPID" 2>/dev/null
     sysRequirementErrors+=("• Is connected to AC power")
     /bin/echo "Power Check: ERROR - No AC Power Detected"
 }
@@ -204,7 +204,7 @@ get_power_status() {
         /bin/echo "Power Check: OK - AC Power Detected"
     else
         /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "Waiting for AC Power Connection" -icon "$warnIcon" -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
-        jamfHelperPID=$(/bin/echo $!)
+        jamfHelperPowerPID=$(/bin/echo $!)
         wait_for_ac_power
     fi
 }
@@ -250,7 +250,6 @@ verifyChecksum() {
 
 cleanExit() {
     ps -p "$caffeinatePID" > /dev/null && kill "$caffeinatePID"; wait "$caffeinatePID" 2>/dev/null
-    # /bin/kill "${caffeinatePID}"
     ## Remove Script
     /bin/rm -f "$finishOSInstallScriptFilePath" 2>/dev/null
     /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath" 2>/dev/null
@@ -421,9 +420,6 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-##Check that the system requirements are met before doing anything else
-verify_system_requirements
 
 ##Launch jamfHelper
 if [ ${userDialog} -eq 0 ]; then
