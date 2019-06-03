@@ -373,7 +373,7 @@ fi
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-if ! [ "$pwrStatus" = "OK" ] && [ "$spaceStatus" = "OK" ]; then
+if [ "$pwrStatus" != "OK" ] || [ "$spaceStatus" != "OK" ]; then
     ## Remove Script
     /bin/rm -f "$finishOSInstallScriptFilePath"
     /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath"
