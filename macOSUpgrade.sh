@@ -35,8 +35,6 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.7.5
-#
 # REQUIREMENTS:
 #           - Jamf Pro
 #           - macOS Clients running version 10.10.5 or later
@@ -47,11 +45,7 @@
 #
 # For more information, visit https://github.com/kc9wwh/macOSUpgrade
 #
-#
 # Written by: Joshua Roskos | Jamf
-#
-# Created On: January 5th, 2017
-# Updated On: June 4th, 2019
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
