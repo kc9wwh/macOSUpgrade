@@ -154,7 +154,8 @@ osinstallersetupdDaemonSettingsFilePath="/Library/LaunchDaemons/com.jamfps.clean
 osinstallersetupdAgentSettingsFilePath="/Library/LaunchAgents/com.apple.install.osinstallersetupd.plist"
 
 ##Amount of time (in seconds) to allow a user to connect to AC power before moving on
-acPowerWaitTimer="120"
+##If null or 0, then the user will not have the opportunity to connect to AC power
+acPowerWaitTimer="0"
 
 ##Icon to display during the AC Power warning
 warnIcon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertCautionIcon.icns"
@@ -167,19 +168,19 @@ errorIcon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/Aler
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 wait_for_ac_power() {
-    # Loop for 120 seconds until either AC Power is detected or the timer is up
+    # Loop for "acPowerWaitTimer" seconds until either AC Power is detected or the timer is up
     sysRequirementErrors=()
     /bin/echo "Waiting for AC power..."
     while [[ "$acPowerWaitTimer" -gt "0" ]]; do
-        if /usr/bin/pmset -g ps | grep "AC Power" > /dev/null ; then
+        if /usr/bin/pmset -g ps | /usr/bin/grep "AC Power" > /dev/null ; then
             /bin/echo "Power Check: OK - AC Power Detected"
-            ps -p "$jamfHelperPowerPID" > /dev/null && kill "$jamfHelperPowerPID"; wait "$jamfHelperPowerPID" 2>/dev/null
+            /bin/ps -p "$jamfHelperPowerPID" > /dev/null && /bin/kill "$jamfHelperPowerPID"; wait "$jamfHelperPowerPID" 2>/dev/null
             return
         fi
         sleep 1
         ((acPowerWaitTimer--))
     done
-    ps -p "$jamfHelperPowerPID" > /dev/null && kill "$jamfHelperPowerPID"; wait "$jamfHelperPowerPID" 2>/dev/null
+    /bin/ps -p "$jamfHelperPowerPID" > /dev/null && /bin/kill "$jamfHelperPowerPID"; wait "$jamfHelperPowerPID" 2>/dev/null
     sysRequirementErrors+=("• Is connected to AC power")
     /bin/echo "Power Check: ERROR - No AC Power Detected"
 }
@@ -199,13 +200,18 @@ downloadInstaller() {
 
 get_power_status() {
     ##Check if device is on battery or ac power
-    ##If not allow user to connect to power for specified time period
+    ##If not, and our acPowerWaitTimer is above 1, allow user to connect to power for specified time period
     if /usr/bin/pmset -g ps | grep "AC Power" > /dev/null ; then
         /bin/echo "Power Check: OK - AC Power Detected"
     else
-        /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "Waiting for AC Power Connection" -icon "$warnIcon" -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
-        jamfHelperPowerPID=$(/bin/echo $!)
-        wait_for_ac_power
+        if [[ -n "$acPowerWaitTimer" ]] && [[ "$acPowerWaitTimer" -gt 0 ]]; then
+            /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "Waiting for AC Power Connection" -icon "$warnIcon" -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
+            jamfHelperPowerPID=$!
+            wait_for_ac_power
+        else
+            sysRequirementErrors+=("• Is connected to AC power")
+            /bin/echo "Power Check: ERROR - No AC Power Detected"
+        fi
     fi
 }
 
@@ -249,7 +255,7 @@ verifyChecksum() {
 }
 
 cleanExit() {
-    ps -p "$caffeinatePID" > /dev/null && kill "$caffeinatePID"; wait "$caffeinatePID" 2>/dev/null
+    /bin/ps -p "$caffeinatePID" > /dev/null && /bin/kill "$caffeinatePID"; wait "$caffeinatePID" 2>/dev/null
     ## Remove Script
     /bin/rm -f "$finishOSInstallScriptFilePath" 2>/dev/null
     /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath" 2>/dev/null
@@ -280,7 +286,7 @@ if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$errorIcon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macOSname. Please ensure your computer meets the following requirements:
 
-$( printf '\t%s\n' "${sysRequirementErrors[@]}" )
+$( /usr/bin/printf '\t%s\n' "${sysRequirementErrors[@]}" )
 
 If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
 
