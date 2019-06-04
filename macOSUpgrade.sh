@@ -211,8 +211,8 @@ currentUser=$( /usr/bin/stat -f %Su /dev/console )
 fvStatus=$( /usr/bin/fdesetup status | head -1 )
 
 ##Check if device is on battery or ac power
-pwrAdapter=$( /usr/bin/pmset -g ps )
-if [[ "$pwrAdapter" == *"AC Power"* ]]; then
+pwrAdapter=$( /usr/bin/pmset -g ps  | /usr/bin/head -1 | /usr/bin/sed -E "s/.*'(.*)'.*/\1/" )
+if [ "$pwrAdapter" = "AC Power" ]; then
     pwrStatus="OK"
     /bin/echo "Power Check: OK - AC Power Detected"
 else
