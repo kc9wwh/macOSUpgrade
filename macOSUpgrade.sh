@@ -97,7 +97,7 @@ unsuccessfulDownload=0
 ##Options: 0 = Disabled / 1 = Enabled
 ##Use Parameter 8 in the JSS.
 eraseInstall="$8"
-if [ "${eraseInstall:=0}" -ne 1 ]; then eraseInstall=0 ; fi
+if [ "$eraseInstall" != "1" ]; then eraseInstall=0 ; fi
 #macOS Installer 10.13.3 or ealier set 0 to it.
 if [ "$versionMajor${versionMinor:=0}" -lt 134 ]; then
     eraseInstall=0
@@ -107,7 +107,7 @@ fi
 ##Full Screen by default
 ##Use Parameter 9 in the JSS.
 userDialog="$9"
-if [[ ${userDialog:=0} -ne 1 ]]; then userDialog=0 ; fi
+if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 
 # Control for auth reboot execution.
 if [ "$versionMajor" -ge 14 ]; then
