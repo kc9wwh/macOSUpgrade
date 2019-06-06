@@ -157,6 +157,9 @@ osinstallersetupdAgentSettingsFilePath="/Library/LaunchAgents/com.apple.install.
 ##If null or 0, then the user will not have the opportunity to connect to AC power
 acPowerWaitTimer="0"
 
+##Declare the sysRequirementErrors array
+declare -a sysRequirementErrors
+
 ##Icon to display during the AC Power warning
 warnIcon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertCautionIcon.icns"
 
@@ -167,20 +170,27 @@ errorIcon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/Aler
 # FUNCTIONS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+kill_process() {
+    processPID="$1"
+    if /bin/ps -p "$processPID" > /dev/null ; then
+        /bin/kill "$processPID"
+        wait "$processPID" 2>/dev/null
+    fi
+}
+
 wait_for_ac_power() {
     # Loop for "acPowerWaitTimer" seconds until either AC Power is detected or the timer is up
-    sysRequirementErrors=()
     /bin/echo "Waiting for AC power..."
     while [[ "$acPowerWaitTimer" -gt "0" ]]; do
         if /usr/bin/pmset -g ps | /usr/bin/grep "AC Power" > /dev/null ; then
             /bin/echo "Power Check: OK - AC Power Detected"
-            /bin/ps -p "$jamfHelperPowerPID" > /dev/null && /bin/kill "$jamfHelperPowerPID"; wait "$jamfHelperPowerPID" 2>/dev/null
+            kill_process "$jamfHelperPowerPID"
             return
         fi
         sleep 1
         ((acPowerWaitTimer--))
     done
-    /bin/ps -p "$jamfHelperPowerPID" > /dev/null && /bin/kill "$jamfHelperPowerPID"; wait "$jamfHelperPowerPID" 2>/dev/null
+    kill_process "$jamfHelperPowerPID"
     sysRequirementErrors+=("• Is connected to AC power")
     /bin/echo "Power Check: ERROR - No AC Power Detected"
 }
@@ -195,16 +205,16 @@ downloadInstaller() {
     ##Run policy to cache installer
     /usr/local/jamf/bin/jamf policy -event "$download_trigger"
     ##Kill Jamf Helper HUD post download
-    /bin/kill "${jamfHUDPID}"
+    kill_process "$jamfHUDPID"
 }
 
-get_power_status() {
+validate_power_status() {
     ##Check if device is on battery or ac power
     ##If not, and our acPowerWaitTimer is above 1, allow user to connect to power for specified time period
-    if /usr/bin/pmset -g ps | grep "AC Power" > /dev/null ; then
+    if /usr/bin/pmset -g ps | /usr/bin/grep "AC Power" > /dev/null ; then
         /bin/echo "Power Check: OK - AC Power Detected"
     else
-        if [[ -n "$acPowerWaitTimer" ]] && [[ "$acPowerWaitTimer" -gt 0 ]]; then
+        if [[ "$acPowerWaitTimer" -gt 0 ]]; then
             /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "Waiting for AC Power Connection" -icon "$warnIcon" -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
             jamfHelperPowerPID=$!
             wait_for_ac_power
@@ -215,7 +225,7 @@ get_power_status() {
     fi
 }
 
-get_free_space() {
+validate_free_space() {
     ##Check if free space > 15GB
     osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $2}' )
     osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $3}' )
@@ -255,7 +265,7 @@ verifyChecksum() {
 }
 
 cleanExit() {
-    /bin/ps -p "$caffeinatePID" > /dev/null && /bin/kill "$caffeinatePID"; wait "$caffeinatePID" 2>/dev/null
+    kill_process "$caffeinatePID"
     ## Remove Script
     /bin/rm -f "$finishOSInstallScriptFilePath" 2>/dev/null
     /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath" 2>/dev/null
@@ -278,8 +288,8 @@ currentUser=$( /usr/bin/stat -f %Su /dev/console )
 fvStatus=$( /usr/bin/fdesetup status | head -1 )
 
 ##Run system requirement checks
-get_power_status
-get_free_space
+validate_power_status
+validate_free_space
 
 ##Don't waste the users time, exit here if system requirements are not met
 if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
