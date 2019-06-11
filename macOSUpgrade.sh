@@ -35,8 +35,6 @@
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
-# VERSION: v2.7.4
-#
 # REQUIREMENTS:
 #           - Jamf Pro
 #           - macOS Clients running version 10.10.5 or later
@@ -47,11 +45,7 @@
 #
 # For more information, visit https://github.com/kc9wwh/macOSUpgrade
 #
-#
 # Written by: Joshua Roskos | Jamf
-#
-# Created On: January 5th, 2017
-# Updated On: March 30th, 2019
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -97,7 +91,7 @@ unsuccessfulDownload=0
 ##Options: 0 = Disabled / 1 = Enabled
 ##Use Parameter 8 in the JSS.
 eraseInstall="$8"
-if [[ "${eraseInstall:=0}" != 1 ]]; then eraseInstall=0 ; fi
+if [ "$eraseInstall" != "1" ]; then eraseInstall=0 ; fi
 #macOS Installer 10.13.3 or ealier set 0 to it.
 if [ "$versionMajor${versionMinor:=0}" -lt 134 ]; then
     eraseInstall=0
@@ -107,7 +101,7 @@ fi
 ##Full Screen by default
 ##Use Parameter 9 in the JSS.
 userDialog="$9"
-if [[ ${userDialog:=0} != 1 ]]; then userDialog=0 ; fi
+if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 
 # Control for auth reboot execution.
 if [ "$versionMajor" -ge 14 ]; then
@@ -244,9 +238,9 @@ validate_free_space() {
 }
 
 verifyChecksum() {
-    if [[ "$installESDChecksum" != "" ]]; then
+    if [ -n "$installESDChecksum" ]; then
         osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/InstallESD.dmg" )
-        if [[ "$osChecksum" == "$installESDChecksum" ]]; then
+        if [ "$osChecksum" = "$installESDChecksum" ]; then
             /bin/echo "Checksum: Valid"
             validChecksum=1
             return
@@ -305,7 +299,7 @@ fi
 
 ##Check for existing OS installer
 loopCount=0
-while [[ $loopCount -lt 3 ]]; do
+while [ "$loopCount" -lt 3 ]; do
     if [ -e "$OSInstaller" ]; then
         /bin/echo "$OSInstaller found, checking version."
         OSVersion=$(/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist")
@@ -320,7 +314,7 @@ while [[ $loopCount -lt 3 ]]; do
             /bin/sleep 2
             downloadInstaller
         fi
-        if [ "$validChecksum" == 1 ]; then
+        if [ "$validChecksum" -eq 1 ]; then
             unsuccessfulDownload=0
             break
         fi
@@ -331,7 +325,7 @@ while [[ $loopCount -lt 3 ]]; do
     ((loopCount++))
 done
 
-if (( unsuccessfulDownload == 1 )); then
+if [ "$unsuccessfulDownload" -eq 1 ]; then
     /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
     /bin/echo "Prompting user for error and exiting..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$errorIcon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
@@ -395,9 +389,9 @@ EOF
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 if [ "$cancelFVAuthReboot" -eq 0 ]; then
     ##Determine Program Argument
-    if [[ $osMajor -ge 11 ]]; then
+    if [ "$osMajor" -ge 11 ]; then
         progArgument="osinstallersetupd"
-    elif [[ $osMajor -eq 10 ]]; then
+    elif [ "$osMajor" -eq 10 ]; then
         progArgument="osinstallersetupplaind"
     fi
 
@@ -438,7 +432,7 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 ##Launch jamfHelper
-if [ ${userDialog} -eq 0 ]; then
+if [ "$userDialog" -eq 0 ]; then
     /bin/echo "Launching jamfHelper as FullScreen..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
     jamfHelperPID=$!
@@ -449,9 +443,9 @@ else
 fi
 
 ##Load LaunchAgent
-if [[ ${fvStatus} == "FileVault is On." ]] && \
-   [[ ${currentUser} != "root" ]] && \
-   [[ ${cancelFVAuthReboot} -eq 0 ]] ; then
+if [ "$fvStatus" = "FileVault is On." ] && \
+   [ "$currentUser" != "root" ] && \
+   [ "$cancelFVAuthReboot" -eq 0 ] ; then
     userID=$( /usr/bin/id -u "${currentUser}" )
     /bin/launchctl bootstrap gui/"${userID}" /Library/LaunchAgents/com.apple.install.osinstallersetupd.plist
 fi
@@ -460,7 +454,7 @@ fi
 /bin/echo "Launching startosinstall..."
 
 ##Check if eraseInstall is Enabled
-if [[ $eraseInstall == 1 ]]; then
+if [ "$eraseInstall" -eq 1 ]; then
     eraseopt='--eraseinstall'
     /bin/echo "Script is configured for Erase and Install of macOS."
 fi
