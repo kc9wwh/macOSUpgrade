@@ -173,6 +173,8 @@ kill_process() {
 }
 
 wait_for_ac_power() {
+    local jamfHelperPowerPID
+    jamfHelperPowerPID="$1"
     # Loop for "acPowerWaitTimer" seconds until either AC Power is detected or the timer is up
     /bin/echo "Waiting for AC power..."
     while [[ "$acPowerWaitTimer" -gt "0" ]]; do
@@ -210,8 +212,7 @@ validate_power_status() {
     else
         if [[ "$acPowerWaitTimer" -gt 0 ]]; then
             /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "Waiting for AC Power Connection" -icon "$warnIcon" -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
-            jamfHelperPowerPID=$!
-            wait_for_ac_power
+            wait_for_ac_power "$!"
         else
             sysRequirementErrors+=("• Is connected to AC power")
             /bin/echo "Power Check: ERROR - No AC Power Detected"
