@@ -187,7 +187,7 @@ wait_for_ac_power() {
         ((acPowerWaitTimer--))
     done
     kill_process "$jamfHelperPowerPID"
-    sysRequirementErrors+=("• Is connected to AC power")
+    sysRequirementErrors+=("Is connected to AC power")
     /bin/echo "Power Check: ERROR - No AC Power Detected"
 }
 
@@ -214,7 +214,7 @@ validate_power_status() {
             /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "Waiting for AC Power Connection" -icon "$warnIcon" -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
             wait_for_ac_power "$!"
         else
-            sysRequirementErrors+=("• Is connected to AC power")
+            sysRequirementErrors+=("Is connected to AC power")
             /bin/echo "Power Check: ERROR - No AC Power Detected"
         fi
     fi
@@ -233,7 +233,7 @@ validate_free_space() {
     if [[ ${freeSpace%.*} -ge 15000000000 ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
     else
-        sysRequirementErrors+=("• Has at least 15GB of Free Space")
+        sysRequirementErrors+=("Has at least 15GB of Free Space")
         /bin/echo "Disk Check: ERROR - ${freeSpace%.*} Bytes Free Space Detected"
     fi
 }
@@ -291,7 +291,7 @@ if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$errorIcon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macOSname. Please ensure your computer meets the following requirements:
 
-$( /usr/bin/printf '\t%s\n' "${sysRequirementErrors[@]}" )
+$( /usr/bin/printf '\t• %s\n' "${sysRequirementErrors[@]}" )
 
 If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
 
