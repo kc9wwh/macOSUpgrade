@@ -221,7 +221,7 @@ validate_power_status() {
 }
 
 validate_free_space() {
-    ##Check if free space > 15GB
+    ##Check if free space > 15GB (10.13) or 20GB (10.14+)
     osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $2}' )
     osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $3}' )
     if [[ $osMajor -eq 12 ]] || [[ $osMajor -eq 13 && $osMinor -lt 4 ]]; then
@@ -230,10 +230,11 @@ validate_free_space() {
         freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Free Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
     fi
 
-    if [[ ${freeSpace%.*} -ge 15000000000 ]]; then
+    requiredDiskSpaceSizeGB=$([ "$osMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
+    if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 * 1000 * 1000 )) ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
     else
-        sysRequirementErrors+=("Has at least 15GB of Free Space")
+        sysRequirementErrors+=("Has at least ${requiredDiskSpaceSizeGB}GB of Free Space")
         /bin/echo "Disk Check: ERROR - ${freeSpace%.*} Bytes Free Space Detected"
     fi
 }
