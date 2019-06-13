@@ -147,9 +147,49 @@ osinstallersetupdDaemonSettingsFilePath="/Library/LaunchDaemons/com.jamfps.clean
 ##Launch agent settings for filevault authenticated reboots
 osinstallersetupdAgentSettingsFilePath="/Library/LaunchAgents/com.apple.install.osinstallersetupd.plist"
 
+##Amount of time (in seconds) to allow a user to connect to AC power before moving on
+##If null or 0, then the user will not have the opportunity to connect to AC power
+acPowerWaitTimer="0"
+
+##Declare the sysRequirementErrors array
+declare -a sysRequirementErrors
+
+##Icon to display during the AC Power warning
+warnIcon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertCautionIcon.icns"
+
+##Icon to display when errors are found
+errorIcon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertStopIcon.icns"
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+kill_process() {
+    processPID="$1"
+    if /bin/ps -p "$processPID" > /dev/null ; then
+        /bin/kill "$processPID"
+        wait "$processPID" 2>/dev/null
+    fi
+}
+
+wait_for_ac_power() {
+    local jamfHelperPowerPID
+    jamfHelperPowerPID="$1"
+    # Loop for "acPowerWaitTimer" seconds until either AC Power is detected or the timer is up
+    /bin/echo "Waiting for AC power..."
+    while [[ "$acPowerWaitTimer" -gt "0" ]]; do
+        if /usr/bin/pmset -g ps | /usr/bin/grep "AC Power" > /dev/null ; then
+            /bin/echo "Power Check: OK - AC Power Detected"
+            kill_process "$jamfHelperPowerPID"
+            return
+        fi
+        sleep 1
+        ((acPowerWaitTimer--))
+    done
+    kill_process "$jamfHelperPowerPID"
+    sysRequirementErrors+=("Is connected to AC power")
+    /bin/echo "Power Check: ERROR - No AC Power Detected"
+}
 
 downloadInstaller() {
     /bin/echo "Downloading macOS Installer..."
@@ -161,7 +201,41 @@ downloadInstaller() {
     ##Run policy to cache installer
     /usr/local/jamf/bin/jamf policy -event "$download_trigger"
     ##Kill Jamf Helper HUD post download
-    /bin/kill "$jamfHUDPID"
+    kill_process "$jamfHUDPID"
+}
+
+validate_power_status() {
+    ##Check if device is on battery or ac power
+    ##If not, and our acPowerWaitTimer is above 1, allow user to connect to power for specified time period
+    if /usr/bin/pmset -g ps | /usr/bin/grep "AC Power" > /dev/null ; then
+        /bin/echo "Power Check: OK - AC Power Detected"
+    else
+        if [[ "$acPowerWaitTimer" -gt 0 ]]; then
+            /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "Waiting for AC Power Connection" -icon "$warnIcon" -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
+            wait_for_ac_power "$!"
+        else
+            sysRequirementErrors+=("Is connected to AC power")
+            /bin/echo "Power Check: ERROR - No AC Power Detected"
+        fi
+    fi
+}
+
+validate_free_space() {
+    ##Check if free space > 15GB
+    osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $2}' )
+    osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $3}' )
+    if [[ $osMajor -eq 12 ]] || [[ $osMajor -eq 13 && $osMinor -lt 4 ]]; then
+        freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Available Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
+    else
+        freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Free Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
+    fi
+
+    if [[ ${freeSpace%.*} -ge 15000000000 ]]; then
+        /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
+    else
+        sysRequirementErrors+=("Has at least 15GB of Free Space")
+        /bin/echo "Disk Check: ERROR - ${freeSpace%.*} Bytes Free Space Detected"
+    fi
 }
 
 verifyChecksum() {
@@ -186,7 +260,11 @@ verifyChecksum() {
 }
 
 cleanExit() {
-    /bin/kill "$caffeinatePID"
+    kill_process "$caffeinatePID"
+    ## Remove Script
+    /bin/rm -f "$finishOSInstallScriptFilePath" 2>/dev/null
+    /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath" 2>/dev/null
+    /bin/rm -f "$osinstallersetupdAgentSettingsFilePath" 2>/dev/null
     exit "$1"
 }
 
@@ -204,31 +282,20 @@ currentUser=$( /usr/bin/stat -f %Su /dev/console )
 ##Check if FileVault Enabled
 fvStatus=$( /usr/bin/fdesetup status | head -1 )
 
-##Check if device is on battery or ac power
-pwrAdapter=$( /usr/bin/pmset -g ps  | /usr/bin/head -1 | /usr/bin/sed -E "s/.*'(.*)'.*/\1/" )
-if [ "$pwrAdapter" = "AC Power" ]; then
-    pwrStatus="OK"
-    /bin/echo "Power Check: OK - AC Power Detected"
-else
-    pwrStatus="ERROR"
-    /bin/echo "Power Check: ERROR - No AC Power Detected"
-fi
+##Run system requirement checks
+validate_power_status
+validate_free_space
 
-##Check if free space > 15GB
-osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $2}' )
-osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $3}' )
-if [ "$osMajor" -eq 12 ] || [[ "$osMajor" -eq 13 && "$osMinor" -lt 4 ]]; then
-    freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Available Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
-else
-    freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Free Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
-fi
+##Don't waste the users time, exit here if system requirements are not met
+if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
+    /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$errorIcon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macOSname. Please ensure your computer meets the following requirements:
 
-if [[ ${freeSpace%.*} -ge 15000000000 ]]; then
-    spaceStatus="OK"
-    /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
-else
-    spaceStatus="ERROR"
-    /bin/echo "Disk Check: ERROR - ${freeSpace%.*} Bytes Free Space Detected"
+$( /usr/bin/printf '\t• %s\n' "${sysRequirementErrors[@]}" )
+
+If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
+
+    cleanExit 1
 fi
 
 ##Check for existing OS installer
@@ -239,14 +306,14 @@ while [ "$loopCount" -lt 3 ]; do
         OSVersion=$(/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist")
         /bin/echo "OSVersion is $OSVersion"
         if [ "$OSVersion" = "$version" ]; then
-          /bin/echo "Installer found, version matches. Verifying checksum..."
-          verifyChecksum
+            /bin/echo "Installer found, version matches. Verifying checksum..."
+            verifyChecksum
         else
-          ##Delete old version.
-          /bin/echo "Installer found, but old. Deleting..."
-          /bin/rm -rf "$OSInstaller"
-          /bin/sleep 2
-          downloadInstaller
+            ##Delete old version.
+            /bin/echo "Installer found, but old. Deleting..."
+            /bin/rm -rf "$OSInstaller"
+            /bin/sleep 2
+            downloadInstaller
         fi
         if [ "$validChecksum" -eq 1 ]; then
             unsuccessfulDownload=0
@@ -255,7 +322,6 @@ while [ "$loopCount" -lt 3 ]; do
     else
         downloadInstaller
     fi
-
     unsuccessfulDownload=1
     ((loopCount++))
 done
@@ -263,10 +329,9 @@ done
 if [ "$unsuccessfulDownload" -eq 1 ]; then
     /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
     /bin/echo "Prompting user for error and exiting..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$errorIcon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
     cleanExit 0
 fi
-
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # CREATE FIRST BOOT SCRIPT
@@ -366,20 +431,6 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-if [ "$pwrStatus" != "OK" ] || [ "$spaceStatus" != "OK" ]; then
-    ## Remove Script
-    /bin/rm -f "$finishOSInstallScriptFilePath"
-    /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath"
-    /bin/rm -f "$osinstallersetupdAgentSettingsFilePath"
-
-    /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macOSname. Please ensure you are connected to power and that you have at least 15GB of Free Space.
-
-    If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
-
-    cleanExit 1
-fi
 
 ##Launch jamfHelper
 if [ "$userDialog" -eq 0 ]; then
