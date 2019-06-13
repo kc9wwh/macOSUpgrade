@@ -230,11 +230,11 @@ validate_free_space() {
         freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Free Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
     fi
 
-    requiredDiskSpaceSize=$([ "$osMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
-    if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSize * 1000 * 1000 * 1000 )) ]]; then
+    requiredDiskSpaceSizeGB=$([ "$osMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
+    if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 * 1000 * 1000 )) ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
     else
-        sysRequirementErrors+=("Has at least ${requiredDiskSpaceSize}GB of Free Space")
+        sysRequirementErrors+=("Has at least ${requiredDiskSpaceSizeGB}GB of Free Space")
         /bin/echo "Disk Check: ERROR - ${freeSpace%.*} Bytes Free Space Detected"
     fi
 }
