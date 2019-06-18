@@ -53,6 +53,26 @@
 # USER VARIABLES
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+# This is the custom event name used to create the post install package 
+# for more information please see the project
+# https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe
+# You can also set a customEvent to enroll the computer into diffferent jamf Pro envrionments
+autoPKGEnrollmentEventName=${11}
+if [[ -z "$autoPKGEnrollmentEventName" ]] ;then
+    autoPKGEnrollmentEventName="makeenrollpkg"
+fi
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# STATIC VARIABLES
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+jamfBinary="/usr/local/jamf/bin/jamf"
+jHelper="/Library/Application Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper"
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# POLICY VARIABLES
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 ##Specify path to OS installer. Use Parameter 4 in the JSS, or specify here
 ##Example: /Applications/Install macOS High Sierra.app
 OSInstaller="$4"
@@ -102,6 +122,42 @@ fi
 ##Use Parameter 9 in the JSS.
 userDialog="$9"
 if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
+
+# Use this to controll the way that reenrollment to your jamf Pro server is done
+# Fresh (fresh)
+# Preserve computer name (keepname)
+# Preserve computer name for SplashBuddy (keepnamesplash)
+# ask for Computer Name (prename)
+# ask for Computer Name (prenamesplash)
+
+# 
+reEnrollmentMethodChecks=`echo ${10} | tr '[:upper:]' '[:lower:]'`
+# clear any previous checks
+/bin/rm /private/tmp/reEnrollmentMethod*
+
+# check for and set the parameters for re enrollment 
+if [[ "$reEnrollmentMethodChecks" ]] ; then
+    if [[ "$reEnrollmentMethodChecks" == *"fresh"* ]]; then
+        fresh=true
+    fi
+
+    if [[ "$reEnrollmentMethodChecks" == *"ask"* ]]; then
+        ask=true
+    fi
+
+    if [[ "$reEnrollmentMethodChecks" == *"keep"* ]]; then
+        keep=true
+    fi
+
+    if [[ "$reEnrollmentMethodChecks" == *"prename"* ]]; then
+        prename=true
+    fi
+
+    # write a placeholder so the re-enroll package create knows to create the computername.txt file
+    if [[ "$reEnrollmentMethodChecks" == *"splashbuddy"* ]]; then
+        /usr/bin/touch /private/tmp/reEnrollmentMethod.splashbuddy
+    fi
+fi
 
 # Control for auth reboot execution.
 if [ "$versionMajor" -ge 14 ]; then
@@ -193,13 +249,13 @@ wait_for_ac_power() {
 
 downloadInstaller() {
     /bin/echo "Downloading macOS Installer..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+    "$jHelper" \
         -windowType hud -windowPosition $dlPosition -title "$title" -alignHeading center -alignDescription left -description "$dldescription" \
         -lockHUD -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" -iconSize 100 &
     ##Capture PID for Jamf Helper HUD
     jamfHUDPID=$!
     ##Run policy to cache installer
-    /usr/local/jamf/bin/jamf policy -event "$download_trigger"
+    "$jamfBinary" policy -event "$download_trigger"
     ##Kill Jamf Helper HUD post download
     kill_process "$jamfHUDPID"
 }
@@ -261,13 +317,55 @@ verifyChecksum() {
 }
 
 cleanExit() {
-    kill_process "$caffeinatePID"
+    # if exiting on an error killall jamfHelper Windows
+    if [[ "$1" != 0 ]] ; then /usr/bin/killall jamfHelper ; fi
     ## Remove Script
     /bin/rm -f "$finishOSInstallScriptFilePath" 2>/dev/null
     /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath" 2>/dev/null
     /bin/rm -f "$osinstallersetupdAgentSettingsFilePath" 2>/dev/null
+    /bin/kill "${caffeinatePID}"
     exit "$1"
 }
+
+fn_askWhatToDoForComputerName () {
+
+    keepMessage="Do you want to KEEP the computer name after erasing? 
+
+Current Computer Name: $currentComputerName
+
+To rename click 'Other'.
+
+"
+
+    renameMessage="Do you want to RENAME the computer name after erasing? 
+
+Current Computer Name: $currentComputerName
+
+To not assign any name click 'No Name'.
+
+"
+
+
+    toKeepOrNotToKeep=`"$jHelper" -windowType hud -icon "$icon" -heading "Computer Name Setting" -description "$keepMessage" -button1 "Keep" -button2 "Other" -defaultButton 1 -timeout 300`
+    if [[ "$toKeepOrNotToKeep" = 0 ]]; then
+        keep=true
+    elif [[ "$toKeepOrNotToKeep" = 2 ]] || [[ "$toKeepOrNotToKeep" = 239 ]] ; then
+        toRenameOrNotToRename=`"$jHelper" -windowType hud -icon "$icon" -heading "Computer Name Setting" -description "$renameMessage" -button2 "Rename" -button1 "No Name" -timeout 300`
+        if [[ "$toRenameOrNotToRename" = 2 ]]; then
+            prename=true
+        elif [[ "$toRenameOrNotToRename" = 0 ]] || [[ "$toRenameOrNotToRename" = 239 ]] ; then
+           fresh=true
+        fi
+    fi
+
+}
+
+fn_askforNewComputerName () {
+
+    newComputerName="$(sudo -u "$currentUser" /usr/bin/osascript -e 'Tell application "System Events" to display dialog "Please enter the new computer name" default answer "" with title "Set New Computer Name" with text buttons {"Cancel","OK"} default button 2' -e 'text returned of result')"
+}
+
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # SYSTEM CHECKS
@@ -433,16 +531,114 @@ fi
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+# prep for naming the computer after eraseinstall stage
+if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] ; then
+ 
+    /bin/echo "Script is configured for re-enrollment."
+
+    ## if re-enrollment is enabled to ask what to do about the name
+    currentComputerName=`/usr/sbin/scutil --get ComputerName`
+
+    if [[ $ask = true ]] && [[ ${currentUser} != "root" ]] ; then
+        /bin/echo "Asking what to do about the computer name."
+        fn_askWhatToDoForComputerName
+    elif [[ $ask = true ]] && [[ ${currentUser} = "root" ]]; then
+        #statements
+        keep=true
+        /bin/echo "The computer is at the login window. Defaulting to preserving the computer name."
+    fi
+
+    if [[ $keep = true ]]; then
+        /bin/echo "Keeping the current computer name."
+        newComputerName="$currentComputerName"
+    fi 
+
+    if [[ $prename = true ]]; then
+        /bin/echo "Assigning a new computer name."
+        fn_askforNewComputerName
+    fi 
+
+    # Computername is assinged after eraseinstall
+    if [[ "$newComputerName" ]]; then
+        /bin/echo "Assinged computer name after eraseinstall: $newComputerName"
+        /bin/echo "$newComputerName" > /private/tmp/reEnrollmentMethod.newComputerName.txt 
+    fi 
+fi # re-enrollment and erase install - prep for naming the computer after eraseinstall stage
+
+
 ##Launch jamfHelper
 if [ "$userDialog" -eq 0 ]; then
     /bin/echo "Launching jamfHelper as FullScreen..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
+    "$jHelper" -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
     jamfHelperPID=$!
 else
     /bin/echo "Launching jamfHelper as Utility Window..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
+    "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
     jamfHelperPID=$!
 fi
+
+# re-enrollment package creation stage
+if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] ; then
+    # package creation 
+    if [ "$versionMajor${versionMinor:=0}" -ge 134 ] ; then
+        autoEnrollPKGResult=`"$jamfBinary" policy -event "$autoPKGEnrollmentEventName"`
+        /bin/echo "Results from package creation policy: $autoPKGEnrollmentEventName"
+        /bin/echo "$autoEnrollPKGResult"
+
+        # Make and array of the packages built with productbuild
+        IFS=$'\n'
+        productbuildPackages=($(/bin/echo "$autoEnrollPKGResult" | /usr/bin/grep productbuild | /usr/bin/awk -F 'Wrote product to ' '{ print $2 }'))
+        unset IFS
+
+        # built in support for multiple packages
+        for packageName in "${productbuildPackages[@]}" ; do
+            /bin/echo "Adding package $packageName to post install"
+            installpackageOption+="--installpackage $packageName "
+        done
+    else
+        echo "startosinstall with installpackage is not supported on this version $version"
+
+        "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+
+        Re-enrollment packages are not supported on $version. Minimum version is macOS 10.13.4" -iconSize 100 -button1 "OK" -defaultButton 1 fi
+
+
+        cleanExit 1
+    fi
+
+    # Error Reporting for failing to create package
+    if [[ -z "$productbuildPackages" ]]; then 
+        /bin/echo "Error: Re-enrollment package cannot be found, failing out"
+
+
+        if [[ "$autoEnrollPKGResult" == *"DEP Crossover"* ]] ; then
+            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+
+        The Mac is assigned for Device Enrollment to a different Jamf Pro Server in Apple Business Manager." -iconSize 100 -button1 "OK" -defaultButton 1 fi
+
+        elif [[ "$autoEnrollPKGResult" == *"DEP multiple Jamf Pro"* ]] ; then
+            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+
+        The Mac is assigned for Device Enrollment across multiple Jamf Pro Servers." -iconSize 100 -button1 "OK" -defaultButton 1 fi
+
+        elif [[ "$autoEnrollPKGResult" == *"failed to get invitationCode"* ]] ; then
+            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+
+        Failed to generate invitationCode for the re-enrollment package." -iconSize 100 -button1 "OK" -defaultButton 1
+
+        elif [[ "$autoEnrollPKGResult" == *"no JSS URL Will not create PKG"* ]] ; then
+            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+
+        The package creation script is not configure correctly. No JSS URL configured." -iconSize 100 -button1 "OK" -defaultButton 1
+        else
+            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+
+        Re-enrollment package could not be found." -iconSize 100 -button1 "OK" -defaultButton 1
+        fi
+
+        cleanExit 1
+    fi
+fi # re-enrollment and erase install - re-enrollment package creation stage
 
 ##Load LaunchAgent
 if [ "$fvStatus" = "FileVault is On." ] && \
@@ -463,9 +659,9 @@ fi
 
 osinstallLogfile="/var/log/startosinstall.log"
 if [ "$versionMajor" -ge 14 ]; then
-    eval "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" 2>&1 &
+    eval "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" "$installpackageOption" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" 2>&1 &
 else
-    eval "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" --applicationpath "\"$OSInstaller\"" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" 2>&1 &
+    eval "\"$OSInstaller/Contents/Resources/startosinstall\"" "$eraseopt" "$installpackageOption" --applicationpath "\"$OSInstaller\"" --agreetolicense --nointeraction --pidtosignal "$jamfHelperPID" >> "$osinstallLogfile" 2>&1 &
 fi
 /bin/sleep 3
 
