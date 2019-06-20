@@ -31,7 +31,7 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
 # This script was designed to be used in a Self Service policy to ensure specific
-# requirements have been met before proceeding with an inplace upgrade of the macOS,
+# requirements have been met before proceeding with an in-place upgrade of the macOS,
 # as well as to address changes Apple has made to the ability to complete macOS upgrades
 # silently.
 #
@@ -41,7 +41,7 @@
 #           - macOS Installer 10.12.4 or later
 #           - eraseInstall option is ONLY supported with macOS Installer 10.13.4+ and client-side macOS 10.13+
 #           - Look over the USER VARIABLES and configure as needed.
-#
+#           - To use the re-enroll functions look at https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe
 #
 # For more information, visit https://github.com/kc9wwh/macOSUpgrade
 #
@@ -53,13 +53,15 @@
 # USER VARIABLES
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# This is the custom event name used to create the post install package 
-# for more information please see the project
-# https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe
-# You can also set a customEvent to enroll the computer into diffferent jamf Pro envrionments
+##This is the custom event name used to create the install package for automatically enrolling 
+##You can statically set this a policy by setting it here
+##You can also make this dynamic to enroll the computer into different Jamf Pro environments
+##For more information please see the project
+##https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe
 autoPKGEnrollmentEventName=${11}
 if [[ -z "$autoPKGEnrollmentEventName" ]] ;then
-    autoPKGEnrollmentEventName="makeenrollpkg"
+    ##add your own event name here if you want this to be static
+    autoPKGEnrollmentEventName=""
 fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -123,41 +125,18 @@ fi
 userDialog="$9"
 if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 
-# Use this to controll the way that reenrollment to your jamf Pro server is done
-# Fresh (fresh)
-# Preserve computer name (keepname)
-# Preserve computer name for SplashBuddy (keepnamesplash)
-# ask for Computer Name (prename)
-# ask for Computer Name (prenamesplash)
-
-# 
+##Options for computer name handling for re-enroll workflows
+##Use this to control the way that re-enrollment to your jamf Pro server is done
+##Requires macOS Installer 10.13.4 or later
+##(ask) - Use jamfHelper to ask the user what to do with the computer name 
+##(fresh) - Default to assigning no computer aget the wipe 
+##(keepname) - Default to automatcailly preserve computer name 
+##(prename) - Default to automatcailly asking for a new computer name 
+##(splashbuddy) - Add this to the parameter setting to aumatically create a ComputerName.txt and ..SplashBuddyFormDone 
+##For more information please see the project
+##https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe
+##make variable lower case
 reEnrollmentMethodChecks=`echo ${10} | tr '[:upper:]' '[:lower:]'`
-# clear any previous checks
-/bin/rm /private/tmp/reEnrollmentMethod*
-
-# check for and set the parameters for re enrollment 
-if [[ "$reEnrollmentMethodChecks" ]] ; then
-    if [[ "$reEnrollmentMethodChecks" == *"fresh"* ]]; then
-        fresh=true
-    fi
-
-    if [[ "$reEnrollmentMethodChecks" == *"ask"* ]]; then
-        ask=true
-    fi
-
-    if [[ "$reEnrollmentMethodChecks" == *"keep"* ]]; then
-        keep=true
-    fi
-
-    if [[ "$reEnrollmentMethodChecks" == *"prename"* ]]; then
-        prename=true
-    fi
-
-    # write a placeholder so the re-enroll package create knows to create the computername.txt file
-    if [[ "$reEnrollmentMethodChecks" == *"splashbuddy"* ]]; then
-        /usr/bin/touch /private/tmp/reEnrollmentMethod.splashbuddy
-    fi
-fi
 
 # Control for auth reboot execution.
 if [ "$versionMajor" -ge 14 ]; then
@@ -317,7 +296,7 @@ verifyChecksum() {
 }
 
 cleanExit() {
-    # if exiting on an error killall jamfHelper Windows
+    ##if exiting on an error killall jamfHelper Windows too
     if [[ "$1" != 0 ]] ; then /usr/bin/killall jamfHelper ; fi
     ## Remove Script
     /bin/rm -f "$finishOSInstallScriptFilePath" 2>/dev/null
@@ -362,7 +341,27 @@ To not assign any name click 'No Name'.
 
 fn_askforNewComputerName () {
 
-    newComputerName="$(sudo -u "$currentUser" /usr/bin/osascript -e 'Tell application "System Events" to display dialog "Please enter the new computer name" default answer "" with title "Set New Computer Name" with text buttons {"Cancel","OK"} default button 2' -e 'text returned of result')"
+    newComputerName="$(sudo -u "$currentUser" /usr/bin/osascript -e 'display dialog "Please enter the new computer name" default answer "" with title "Set New Computer Name" with text buttons {"Cancel","OK"} default button 2' -e 'text returned of result')"
+}
+
+
+fn_Process_reEnrollmentMethodChecks () {
+    ##check for and set the parameters for re enrollment 
+    if [[ "$reEnrollmentMethodChecks" ]] ; then
+
+        ##clear any previous checks
+        /bin/rm /private/tmp/reEnrollmentMethod*
+
+        if [[ "$reEnrollmentMethodChecks" == *"fresh"* ]]; then fresh=true ; fi
+        if [[ "$reEnrollmentMethodChecks" == *"ask"* ]]; then ask=true ; fi
+        if [[ "$reEnrollmentMethodChecks" == *"keep"* ]]; then keep=true ; fi
+        if [[ "$reEnrollmentMethodChecks" == *"prename"* ]]; then prename=true ; fi
+
+        ##write a placeholder so the re-enroll package create knows to create the computername.txt file
+        if [[ "$reEnrollmentMethodChecks" == *"splashbuddy"* ]]; then
+            /usr/bin/touch /private/tmp/reEnrollmentMethod.splashbuddy
+        fi ##re-enroll has splashbuddy
+    fi
 }
 
 
@@ -396,6 +395,42 @@ If you continue to experience this issue, please contact the IT Support Center."
 
     cleanExit 1
 fi
+
+##This is the beginning of the re-enroll work-flow to handle the computer name
+if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] && [[ "$autoPKGEnrollmentEventName" ]] ; then
+    fn_Process_reEnrollmentMethodChecks
+
+    /bin/echo "Script is configured for re-enrollment."
+
+    ## if re-enrollment is enabled to ask what to do about the name
+    currentComputerName=`/usr/sbin/scutil --get ComputerName`
+
+    if [[ $ask = true ]] && [[ ${currentUser} != "root" ]] ; then
+        /bin/echo "Asking what to do about the computer name."
+        fn_askWhatToDoForComputerName
+    elif [[ $ask = true ]] && [[ ${currentUser} = "root" ]]; then
+        #statements
+        keep=true
+        /bin/echo "The computer is at the login window. Defaulting to preserving the computer name."
+    fi
+
+    if [[ $keep = true ]]; then
+        /bin/echo "Keeping the current computer name."
+        newComputerName="$currentComputerName"
+    fi 
+
+    if [[ $prename = true ]]; then
+        /bin/echo "Assigning a new computer name."
+        fn_askforNewComputerName
+    fi 
+
+    # Computername is assigned after eraseinstall
+    if [[ "$newComputerName" ]]; then
+        /bin/echo "Assinged computer name after eraseinstall: $newComputerName"
+        /bin/echo "$newComputerName" > /private/tmp/reEnrollmentMethod.newComputerName.txt 
+    fi 
+fi # re-enrollment and erase install - prep for naming the computer after eraseinstall stage
+
 
 ##Check for existing OS installer
 loopCount=0
@@ -531,41 +566,6 @@ fi
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# prep for naming the computer after eraseinstall stage
-if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] ; then
- 
-    /bin/echo "Script is configured for re-enrollment."
-
-    ## if re-enrollment is enabled to ask what to do about the name
-    currentComputerName=`/usr/sbin/scutil --get ComputerName`
-
-    if [[ $ask = true ]] && [[ ${currentUser} != "root" ]] ; then
-        /bin/echo "Asking what to do about the computer name."
-        fn_askWhatToDoForComputerName
-    elif [[ $ask = true ]] && [[ ${currentUser} = "root" ]]; then
-        #statements
-        keep=true
-        /bin/echo "The computer is at the login window. Defaulting to preserving the computer name."
-    fi
-
-    if [[ $keep = true ]]; then
-        /bin/echo "Keeping the current computer name."
-        newComputerName="$currentComputerName"
-    fi 
-
-    if [[ $prename = true ]]; then
-        /bin/echo "Assigning a new computer name."
-        fn_askforNewComputerName
-    fi 
-
-    # Computername is assinged after eraseinstall
-    if [[ "$newComputerName" ]]; then
-        /bin/echo "Assinged computer name after eraseinstall: $newComputerName"
-        /bin/echo "$newComputerName" > /private/tmp/reEnrollmentMethod.newComputerName.txt 
-    fi 
-fi # re-enrollment and erase install - prep for naming the computer after eraseinstall stage
-
-
 ##Launch jamfHelper
 if [ "$userDialog" -eq 0 ]; then
     /bin/echo "Launching jamfHelper as FullScreen..."
@@ -577,20 +577,20 @@ else
     jamfHelperPID=$!
 fi
 
-# re-enrollment package creation stage
-if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] ; then
-    # package creation 
+##Re-enrollment package creation stage
+if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] || [[ "$autoPKGEnrollmentEventName" ]] && [[ $eraseInstall == 1 ]] ; then
+    ##package creation 
     if [ "$versionMajor${versionMinor:=0}" -ge 134 ] ; then
         autoEnrollPKGResult=`"$jamfBinary" policy -event "$autoPKGEnrollmentEventName"`
         /bin/echo "Results from package creation policy: $autoPKGEnrollmentEventName"
         /bin/echo "$autoEnrollPKGResult"
 
-        # Make and array of the packages built with productbuild
+        ##Make and array of the packages built with productbuild - For future ideas
         IFS=$'\n'
         productbuildPackages=($(/bin/echo "$autoEnrollPKGResult" | /usr/bin/grep productbuild | /usr/bin/awk -F 'Wrote product to ' '{ print $2 }'))
         unset IFS
 
-        # built in support for multiple packages
+        ##Built in support for multiple packages - For future ideas
         for packageName in "${productbuildPackages[@]}" ; do
             /bin/echo "Adding package $packageName to post install"
             installpackageOption+="--installpackage $packageName "
@@ -606,7 +606,7 @@ if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] ; then
         cleanExit 1
     fi
 
-    # Error Reporting for failing to create package
+    ##Error Reporting for failing to create package
     if [[ -z "$productbuildPackages" ]]; then 
         /bin/echo "Error: Re-enrollment package cannot be found, failing out"
 
@@ -638,7 +638,7 @@ if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] ; then
 
         cleanExit 1
     fi
-fi # re-enrollment and erase install - re-enrollment package creation stage
+fi ##re-enrollment and erase install - re-enrollment package creation stage
 
 ##Load LaunchAgent
 if [ "$fvStatus" = "FileVault is On." ] && \

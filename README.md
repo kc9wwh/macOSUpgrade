@@ -42,6 +42,8 @@ When you open the script you will find some user variables defined on lines 60-1
 
 *Added in v2.6.0 - You can now specify to use the `--eraseInstall` parameter when using macOS Installer 10.13.4 or later and the client is running macOS 10.13 or later. Essentially this will wipe and reload the system to factory defaults. Yay \o/*
 
+* Added in v2.7.0 - You can now automatically re-enroll a mac after the `--eraseInstall`. This will create a PKG and use `--installpackage` to `curl` the jamf binary and enroll the computer by `jamf enroll -invitation`. This also supports various methods of setting/preserving the computer name. To make use of this feature pair the macOSUpgrade work-flow script with the re-enroll scrips from, [re-enroll-mac-into-jamf-after-wipe](https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe). \(ﾉ◕ヮ◕\)ﾉ\*:･ﾟ✧ *
+
 
 **Staging the macOS Installer**
 
@@ -74,6 +76,10 @@ pkgbuild --install-location /Applications --component "/path/to/macOSInstallerAp
 
 ![alt text](/imgs/fullScreen.png)
 
+
+**Example of Utility Dialog**
+
+![alt text](/imgs/utility.png)
 
 **Example of Utility Dialog**
 
