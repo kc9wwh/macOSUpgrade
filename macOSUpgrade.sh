@@ -132,7 +132,7 @@ if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 ##(fresh) - Default to assigning no computer aget the wipe 
 ##(keepname) - Default to automatcailly preserve computer name 
 ##(prename) - Default to automatcailly asking for a new computer name 
-##(splashbuddy) - Add this to the parameter setting to aumatically create a ComputerName.txt and ..SplashBuddyFormDone 
+##(splashbuddy) - Add this to the parameter setting to aumatically create a ComputerName.txt and .SplashBuddyFormDone 
 ##For more information please see the project
 ##https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe
 ##make variable lower case
