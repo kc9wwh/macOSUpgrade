@@ -12,6 +12,7 @@ Requirements:
 * macOS Installer 10.12.4 or later
 * `eraseInstall` option is ONLY supported with macOS Installer 10.13.4+ and client-side macOS 10.13+
 * Look over the USER VARIABLES and configure as needed.
+* To make use of the re-enroll work-flow check out, [re-enroll-mac-into-jamf-after-wipe](https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe).
 
 *This workflow will **not** work if a user is not logged in since the `startosinstall` binary requires a user to be logged in. Tested with macOS 10.13.4 and you will get errors in that the process couldn't establish a connection to the WindowServer.*
 
@@ -41,6 +42,8 @@ Also, if you are encrypting your macOS devices (which I hope you are), you will 
 When you open the script you will find some user variables defined on lines 60-118. Here you can specify the message that is displayed to the end user while the script is running and preparing the computer to upgrade to macOS Sierra, as well as the variables used to determine the version and path for the macOS Installer. Also, don't forget to setup a policy with a custom trigger specified as defined in the user variables.
 
 *Added in v2.6.0 - You can now specify to use the `--eraseInstall` parameter when using macOS Installer 10.13.4 or later and the client is running macOS 10.13 or later. Essentially this will wipe and reload the system to factory defaults. Yay \o/*
+
+*Added in v2.7.0 - You can now automatically re-enroll a mac after the `--eraseInstall`. This will create a PKG and use `--installpackage` to `curl` the jamf binary and enroll the computer by `jamf enroll -invitation`. This also supports various methods of setting/preserving the computer name. To make use of this feature pair the macOSUpgrade work-flow script with the re-enroll scripts from, [re-enroll-mac-into-jamf-after-wipe](https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe). \(ﾉ◕ヮ◕\)ﾉ\*:･ﾟ✧*
 
 
 **Staging the macOS Installer**
@@ -74,6 +77,10 @@ pkgbuild --install-location /Applications --component "/path/to/macOSInstallerAp
 
 ![alt text](/imgs/fullScreen.png)
 
+
+**Example of Utility Dialog**
+
+![alt text](/imgs/utility.png)
 
 **Example of Utility Dialog**
 
