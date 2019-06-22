@@ -12,7 +12,7 @@ Requirements:
 * macOS Installer 10.12.4 or later
 * `eraseInstall` option is ONLY supported with macOS Installer 10.13.4+ and client-side macOS 10.13+
 * Look over the USER VARIABLES and configure as needed.
-* To make use the re-enroll work-flow check out, [re-enroll-mac-into-jamf-after-wipe](https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe).
+* To make use of the re-enroll work-flow check out, [re-enroll-mac-into-jamf-after-wipe](https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe).
 
 *This workflow will **not** work if a user is not logged in since the `startosinstall` binary requires a user to be logged in. Tested with macOS 10.13.4 and you will get errors in that the process couldn't establish a connection to the WindowServer.*
 
