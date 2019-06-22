@@ -604,7 +604,8 @@ if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] || [[ "$autoPKG
     fi
 
     ##Error Reporting for failing to create package
-    if [[ -z "${productbuildPackages[@]}" ]]; then 
+    # if [[ -z "${productbuildPackages[@]}" ]]; then 
+    if [[ "${#productbuildPackages[@]}" = 0 ]]; then 
         /bin/echo "Error: Re-enrollment package cannot be found, failing out"
 
 
