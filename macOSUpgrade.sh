@@ -114,7 +114,7 @@ unsuccessfulDownload=0
 ##Use Parameter 8 in the JSS.
 eraseInstall="$8"
 if [ "$eraseInstall" != "1" ]; then eraseInstall=0 ; fi
-#macOS Installer 10.13.3 or ealier set 0 to it.
+#macOS Installer 10.13.3 or earlier set 0 to it.
 if [ "$versionMajor${versionMinor:=0}" -lt 134 ]; then
     eraseInstall=0
 fi
@@ -130,9 +130,9 @@ if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 ##Requires macOS Installer 10.13.4 or later
 ##NOTE: To Default to assigning no computer after the wipe put nothing in here
 ##(ask) - Use jamfHelper to ask the user what to do with the computer name 
-##(keepname) - Default to automatcailly preserve computer name 
-##(prename) - Default to automatcailly asking for a new computer name 
-##(splashbuddy) - Add this to the parameter setting to aumatically create a ComputerName.txt and .SplashBuddyFormDone 
+##(keepname) - Default to automatically preserve computer name 
+##(prename) - Default to automatically asking for a new computer name 
+##(splashbuddy) - Add this to the parameter setting to automatically create a ComputerName.txt and .SplashBuddyFormDone 
 ##For more information please see the project
 ##https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe
 ##make variable lower case
@@ -354,7 +354,7 @@ fn_Process_reEnrollmentMethodChecks () {
         if [[ "$reEnrollmentMethodChecks" == *"keep"* ]]; then keep=true ; fi
         if [[ "$reEnrollmentMethodChecks" == *"prename"* ]]; then prename=true ; fi
 
-        ##write a placeholder so the re-enroll package create knows to create the computername.txt file
+        ##write a placeholder so the re-enroll package create knows to create the ComputerName.txt file
         if [[ "$reEnrollmentMethodChecks" == *"splashbuddy"* ]]; then
             /usr/bin/touch /private/tmp/reEnrollmentMethod.splashbuddy
         fi ##re-enroll has splashbuddy
@@ -421,9 +421,9 @@ if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] && [[ "$autoPKG
         fn_askforNewComputerName
     fi 
 
-    # Computername is assigned after eraseinstall
+    # Computer name is assigned after eraseinstall
     if [[ "$newComputerName" ]]; then
-        /bin/echo "Assinged computer name after eraseinstall: $newComputerName"
+        /bin/echo "Assigned computer name after eraseinstall: $newComputerName"
         /bin/echo "$newComputerName" > /private/tmp/reEnrollmentMethod.newComputerName.txt 
     fi 
 fi # re-enrollment and erase install - prep for naming the computer after eraseinstall stage
@@ -582,7 +582,7 @@ if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] || [[ "$autoPKG
         /bin/echo "Results from package creation policy: $autoPKGEnrollmentEventName"
         /bin/echo "$autoEnrollPKGResult"
 
-        ##Make and array of the packages built with productbuild - For future ideas
+        ##Make and array of the packages built with 'productbuild' - For future ideas
         IFS=$'\n'
         productbuildPackages=($(/bin/echo "$autoEnrollPKGResult" | /usr/bin/grep productbuild | /usr/bin/awk -F 'Wrote product to ' '{ print $2 }'))
         unset IFS
@@ -595,7 +595,7 @@ if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] || [[ "$autoPKG
     else
         echo "startosinstall with installpackage is not supported on this version $version"
 
-        "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+        "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preparation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
 
         Re-enrollment packages are not supported on $version. Minimum version is macOS 10.13.4" -iconSize 100 -button1 "OK" -defaultButton 1
 
@@ -610,26 +610,26 @@ if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] || [[ "$autoPKG
 
 
         if [[ "$autoEnrollPKGResult" == *"DEP Crossover"* ]] ; then
-            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preparation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
 
         The Mac is assigned for Device Enrollment to a different Jamf Pro Server in Apple Business Manager." -iconSize 100 -button1 "OK" -defaultButton 1
 
         elif [[ "$autoEnrollPKGResult" == *"DEP multiple Jamf Pro"* ]] ; then
-            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preparation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
 
         The Mac is assigned for Device Enrollment across multiple Jamf Pro Servers." -iconSize 100 -button1 "OK" -defaultButton 1
 
         elif [[ "$autoEnrollPKGResult" == *"failed to get invitationCode"* ]] ; then
-            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preparation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
 
         Failed to generate invitationCode for the re-enrollment package." -iconSize 100 -button1 "OK" -defaultButton 1
 
         elif [[ "$autoEnrollPKGResult" == *"no JSS URL Will not create PKG"* ]] ; then
-            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preparation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
 
         The package creation script is not configure correctly. No JSS URL configured." -iconSize 100 -button1 "OK" -defaultButton 1
         else
-            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
+            "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preparation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
 
         Re-enrollment package could not be found." -iconSize 100 -button1 "OK" -defaultButton 1
         fi
