@@ -58,7 +58,7 @@
 ##You can also make this dynamic to enroll the computer into different Jamf Pro environments
 ##For more information please see the project
 ##https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe
-autoPKGEnrollmentEventName=${11}
+autoPKGEnrollmentEventName="${11}"
 if [[ -z "$autoPKGEnrollmentEventName" ]] ;then
     ##add your own event name here if you want this to be static
     autoPKGEnrollmentEventName=""
@@ -128,15 +128,15 @@ if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 ##Options for computer name handling for re-enroll workflows
 ##Use this to control the way that re-enrollment to your jamf Pro server is done
 ##Requires macOS Installer 10.13.4 or later
+##NOTE: To Default to assigning no computer after the wipe put nothing in here
 ##(ask) - Use jamfHelper to ask the user what to do with the computer name 
-##(fresh) - Default to assigning no computer aget the wipe 
 ##(keepname) - Default to automatcailly preserve computer name 
 ##(prename) - Default to automatcailly asking for a new computer name 
 ##(splashbuddy) - Add this to the parameter setting to aumatically create a ComputerName.txt and .SplashBuddyFormDone 
 ##For more information please see the project
 ##https://github.com/cubandave/re-enroll-mac-into-jamf-after-wipe
 ##make variable lower case
-reEnrollmentMethodChecks=`echo ${10} | tr '[:upper:]' '[:lower:]'`
+reEnrollmentMethodChecks=$(echo "${10}" | tr '[:upper:]' '[:lower:]')
 
 # Control for auth reboot execution.
 if [ "$versionMajor" -ge 14 ]; then
@@ -325,15 +325,13 @@ To not assign any name click 'No Name'.
 "
 
 
-    toKeepOrNotToKeep=`"$jHelper" -windowType hud -icon "$icon" -heading "Computer Name Setting" -description "$keepMessage" -button1 "Keep" -button2 "Other" -defaultButton 1 -timeout 300`
+    toKeepOrNotToKeep=$( "$jHelper" -windowType hud -icon "$icon" -heading "Computer Name Setting" -description "$keepMessage" -button1 "Keep" -button2 "Other" -defaultButton 1 -timeout 300 )
     if [[ "$toKeepOrNotToKeep" = 0 ]]; then
         keep=true
     elif [[ "$toKeepOrNotToKeep" = 2 ]] || [[ "$toKeepOrNotToKeep" = 239 ]] ; then
-        toRenameOrNotToRename=`"$jHelper" -windowType hud -icon "$icon" -heading "Computer Name Setting" -description "$renameMessage" -button2 "Rename" -button1 "No Name" -timeout 300`
+        toRenameOrNotToRename=$( "$jHelper" -windowType hud -icon "$icon" -heading "Computer Name Setting" -description "$renameMessage" -button2 "Rename" -button1 "No Name" -timeout 300 )
         if [[ "$toRenameOrNotToRename" = 2 ]]; then
             prename=true
-        elif [[ "$toRenameOrNotToRename" = 0 ]] || [[ "$toRenameOrNotToRename" = 239 ]] ; then
-           fresh=true
         fi
     fi
 
@@ -341,7 +339,7 @@ To not assign any name click 'No Name'.
 
 fn_askforNewComputerName () {
 
-    newComputerName="$(sudo -u "$currentUser" /usr/bin/osascript -e 'display dialog "Please enter the new computer name" default answer "" with title "Set New Computer Name" with text buttons {"Cancel","OK"} default button 2' -e 'text returned of result')"
+    newComputerName=$( sudo -u "$currentUser" /usr/bin/osascript -e 'display dialog "Please enter the new computer name" default answer "" with title "Set New Computer Name" with text buttons {"Cancel","OK"} default button 2' -e 'text returned of result' )
 }
 
 
@@ -352,7 +350,6 @@ fn_Process_reEnrollmentMethodChecks () {
         ##clear any previous checks
         /bin/rm /private/tmp/reEnrollmentMethod*
 
-        if [[ "$reEnrollmentMethodChecks" == *"fresh"* ]]; then fresh=true ; fi
         if [[ "$reEnrollmentMethodChecks" == *"ask"* ]]; then ask=true ; fi
         if [[ "$reEnrollmentMethodChecks" == *"keep"* ]]; then keep=true ; fi
         if [[ "$reEnrollmentMethodChecks" == *"prename"* ]]; then prename=true ; fi
@@ -403,7 +400,7 @@ if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] && [[ "$autoPKG
     /bin/echo "Script is configured for re-enrollment."
 
     ## if re-enrollment is enabled to ask what to do about the name
-    currentComputerName=`/usr/sbin/scutil --get ComputerName`
+    currentComputerName=$( /usr/sbin/scutil --get ComputerName )
 
     if [[ $ask = true ]] && [[ ${currentUser} != "root" ]] ; then
         /bin/echo "Asking what to do about the computer name."
@@ -581,7 +578,7 @@ fi
 if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] || [[ "$autoPKGEnrollmentEventName" ]] && [[ $eraseInstall == 1 ]] ; then
     ##package creation 
     if [ "$versionMajor${versionMinor:=0}" -ge 134 ] ; then
-        autoEnrollPKGResult=`"$jamfBinary" policy -event "$autoPKGEnrollmentEventName"`
+        autoEnrollPKGResult=$( "$jamfBinary" policy -event "$autoPKGEnrollmentEventName" )
         /bin/echo "Results from package creation policy: $autoPKGEnrollmentEventName"
         /bin/echo "$autoEnrollPKGResult"
 
@@ -600,26 +597,26 @@ if [[ "$reEnrollmentMethodChecks" ]] && [[ $eraseInstall == 1 ]] || [[ "$autoPKG
 
         "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
 
-        Re-enrollment packages are not supported on $version. Minimum version is macOS 10.13.4" -iconSize 100 -button1 "OK" -defaultButton 1 fi
+        Re-enrollment packages are not supported on $version. Minimum version is macOS 10.13.4" -iconSize 100 -button1 "OK" -defaultButton 1
 
 
         cleanExit 1
     fi
 
     ##Error Reporting for failing to create package
-    if [[ -z "$productbuildPackages" ]]; then 
+    if [[ -z "${productbuildPackages[@]}" ]]; then 
         /bin/echo "Error: Re-enrollment package cannot be found, failing out"
 
 
         if [[ "$autoEnrollPKGResult" == *"DEP Crossover"* ]] ; then
             "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
 
-        The Mac is assigned for Device Enrollment to a different Jamf Pro Server in Apple Business Manager." -iconSize 100 -button1 "OK" -defaultButton 1 fi
+        The Mac is assigned for Device Enrollment to a different Jamf Pro Server in Apple Business Manager." -iconSize 100 -button1 "OK" -defaultButton 1
 
         elif [[ "$autoEnrollPKGResult" == *"DEP multiple Jamf Pro"* ]] ; then
             "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
 
-        The Mac is assigned for Device Enrollment across multiple Jamf Pro Servers." -iconSize 100 -button1 "OK" -defaultButton 1 fi
+        The Mac is assigned for Device Enrollment across multiple Jamf Pro Servers." -iconSize 100 -button1 "OK" -defaultButton 1
 
         elif [[ "$autoEnrollPKGResult" == *"failed to get invitationCode"* ]] ; then
             "$jHelper" -windowType utility -title "$title" -icon "$icon" -heading "Re-enrollment Preperation Failed" -description "We were unable to prepare your computer for $macOSname with re-enrollment.
