@@ -292,7 +292,7 @@ caffeinatePID=$!
 currentUser=$( /usr/bin/stat -f %Su /dev/console )
 
 ## Check if FileVault Enabled
-fvStatus=$( /usr/bin/fdesetup status | head -1 )
+fvStatus=$( /usr/bin/fdesetup status | /usr/bin/head -1 )
 
 ## Run system requirement checks
 validate_power_status
