@@ -484,7 +484,7 @@ if [ "$eraseInstall" -eq 1 ]; then
 fi
 
 ## Begin Upgrade
-startosinstallCommand="\"$OSInstaller/Contents/Resources/startosinstall\" ${startosinstallOptions[@]} >> $osinstallLogfile 2>&1 &"
+startosinstallCommand="\"$OSInstaller/Contents/Resources/startosinstall\" ${startosinstallOptions[*]} >> $osinstallLogfile 2>&1 &"
 /bin/echo "Running a command as '$startosinstallCommand'..."
 eval "$startosinstallCommand"
 
