@@ -112,6 +112,16 @@ else
     cancelFVAuthReboot=0
 fi
 
+## Install package static path to install after the OS installation is complete.
+## This variable is OPTIONAL
+## Use Parameter 10 in the JSS.
+installPackagePathWithInstallComplication="${10}"
+if [ "$versionMajor" -lt 13 ] && [ -n "$installPackagePathWithInstallComplication" ]; then
+    # Installer of macOS less than 10.13 is not support install package option.
+    installPackagePathWithInstallComplication=""
+    /bin/echo "Installer of macOS less than 10.13 is not support install package option."
+fi
+
 ## Title of OS
 macOSname=$(/bin/echo "$OSInstaller" | /usr/bin/sed -E 's/(.+)?Install(.+)\.app\/?/\2/' | /usr/bin/xargs)
 
@@ -451,6 +461,18 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+## Check if set install package static path to install after the OS installation is complete
+if [ -n "$installPackagePathWithInstallComplication" ];then
+    ## Since the package may be installed as side effects of events such as download_trigger defined in this script, this variables are checked at this timing.
+    if [ ! -e "$installPackagePathWithInstallComplication" ]; then
+        /bin/echo "The package does not exist in $installPackagePathWithInstallComplication. Please check your script arguments."
+        cleanExit 1
+    fi
+
+    ## This variable may have space. Therefore, escape value with duble quotation
+    startosinstallOptions+=("--installpackage \"$installPackagePathWithInstallComplication\"")
+    /bin/echo "Script is configured for install package $installPackagePathWithInstallComplication."
+fi
 
 ## Launch jamfHelper
 jamfHelperPID=""
