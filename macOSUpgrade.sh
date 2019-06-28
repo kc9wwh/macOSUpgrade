@@ -408,12 +408,13 @@ EOF
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH AGENT FOR FILEVAULT AUTHENTICATED REBOOTS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+binaryNameForOSInstallerSetup=""
 if [ "$cancelFVAuthReboot" -eq 0 ]; then
-    ## Determine Program Argument
-    if [ "$installerVersionMajor" -ge 11 ]; then
-        progArgument="osinstallersetupd"
-    elif [ "$installerVersionMajor" -eq 10 ]; then
-        progArgument="osinstallersetupplaind"
+    ##Determine binary name
+    if [ "$osMajor" -ge 11 ]; then
+        binaryNameForOSInstallerSetup="osinstallersetupd"
+    elif [ "$osMajor" -eq 10 ]; then
+        binaryNameForOSInstallerSetup="osinstallersetupplaind"
     fi
 
     /bin/cat << EOP > "$osinstallersetupdAgentSettingsFilePath"
@@ -436,7 +437,7 @@ if [ "$cancelFVAuthReboot" -eq 0 ]; then
     <true/>
     <key>ProgramArguments</key>
     <array>
-        <string>$OSInstaller/Contents/Frameworks/OSInstallerSetup.framework/Resources/$progArgument</string>
+        <string>$OSInstaller/Contents/Frameworks/OSInstallerSetup.framework/Resources/$binaryNameForOSInstallerSetup</string>
     </array>
 </dict>
 </plist>
@@ -464,7 +465,15 @@ else
     jamfHelperPID=$!
 fi
 
-## Load LaunchAgent
+## If previous processes remain for some reason, the installation will freeze, so kill it.
+killingProcesses=("startosinstall" "$binaryNameForOSInstallerSetup")
+for processName in "${killingProcesses[@]}"; do
+    [ -z "$processName" ] && continue
+    /bin/echo "Killing $processName processes."
+    /usr/bin/killall "$processName" 2>&1 || true
+done
+
+##Load LaunchAgent
 if [ "$fvStatus" = "FileVault is On." ] && \
    [ "$currentUser" != "root" ] && \
    [ "$cancelFVAuthReboot" -eq 0 ] ; then
