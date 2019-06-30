@@ -274,9 +274,9 @@ cleanExit() {
       kill_process "$caffeinatePID"
     fi
     ## Remove Script
-    /bin/rm -f "$finishOSInstallScriptFilePath" 2>/dev/null
-    /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath" 2>/dev/null
-    /bin/rm -f "$osinstallersetupdAgentSettingsFilePath" 2>/dev/null
+    /bin/rm -f "$finishOSInstallScriptFilePath"
+    /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath"
+    /bin/rm -f "$osinstallersetupdAgentSettingsFilePath"
     exit "$1"
 }
 
