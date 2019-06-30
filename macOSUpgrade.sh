@@ -160,6 +160,7 @@ warnIcon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/Alert
 ## Icon to display when errors are found
 errorIcon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertStopIcon.icns"
 
+<<<<<<< HEAD
 ## The startossinstall log file path
 osinstallLogfile="/var/log/startosinstall.log"
 
@@ -168,6 +169,10 @@ caffeinatePID=""
 
 ## The startossinstall command option array
 declare -a startosinstallOptions=()
+=======
+##Determine binary name
+binaryNameForOSInstallerSetup=$([ "$osMajor" -ge 11 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
+>>>>>>> 84e6e60... remove cafinate processes before start running macOSUpgrade.sh
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
@@ -293,7 +298,19 @@ cleanExit() {
 # SYSTEM CHECKS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+<<<<<<< HEAD
 ## Caffeinate
+=======
+## If previous processes remain for some reason, the installation will freeze, so kill it.
+killingProcesses=("caffeinate" "startosinstall" "$binaryNameForOSInstallerSetup")
+for processName in "${killingProcesses[@]}"; do
+    [ -z "$processName" ] && continue
+    /bin/echo "Killing $processName processes."
+    /usr/bin/killall "$processName" 2>&1 || true
+done
+
+##Caffeinate
+>>>>>>> 84e6e60... remove cafinate processes before start running macOSUpgrade.sh
 /usr/bin/caffeinate -dis &
 caffeinatePID=$!
 
@@ -408,15 +425,7 @@ EOF
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # LAUNCH AGENT FOR FILEVAULT AUTHENTICATED REBOOTS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-binaryNameForOSInstallerSetup=""
 if [ "$cancelFVAuthReboot" -eq 0 ]; then
-    ##Determine binary name
-    if [ "$osMajor" -ge 11 ]; then
-        binaryNameForOSInstallerSetup="osinstallersetupd"
-    elif [ "$osMajor" -eq 10 ]; then
-        binaryNameForOSInstallerSetup="osinstallersetupplaind"
-    fi
-
     /bin/cat << EOP > "$osinstallersetupdAgentSettingsFilePath"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -464,14 +473,6 @@ else
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
     jamfHelperPID=$!
 fi
-
-## If previous processes remain for some reason, the installation will freeze, so kill it.
-killingProcesses=("startosinstall" "$binaryNameForOSInstallerSetup")
-for processName in "${killingProcesses[@]}"; do
-    [ -z "$processName" ] && continue
-    /bin/echo "Killing $processName processes."
-    /usr/bin/killall "$processName" 2>&1 || true
-done
 
 ##Load LaunchAgent
 if [ "$fvStatus" = "FileVault is On." ] && \
