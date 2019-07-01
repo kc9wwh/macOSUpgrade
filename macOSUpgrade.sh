@@ -356,7 +356,6 @@ fi
 ## First Run Script to remove the installer.
 ## Clean up files
 /bin/rm -fr "$OSInstaller"
-/bin/sleep 2
 ## Update Device Inventory
 /usr/local/jamf/bin/jamf recon
 ## Remove LaunchAgent and LaunchDaemon
