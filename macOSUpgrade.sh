@@ -230,18 +230,14 @@ validate_power_status() {
 }
 
 validate_free_space() {
-    local installerMajor installerMinor freeSpace requiredDiskSpaceSizeGB
+    local installerMajor freeSpace requiredDiskSpaceSizeGB
 
     installerMajor="$1"
-    installerMinor="$2"
+
+    ## 10.13.4 or later, diskutil info has 'Free Space'.
+    freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep -E "(Available Space)|(Free Space)" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
 
     ## Check if free space > 15GB (10.13) or 20GB (10.14+)
-    if [[ "$installerMajor" -eq 12 ]] || [[ "$installerMajor" -eq 13 && "$installerMinor" -lt 4 ]]; then
-        freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Available Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
-    else
-        freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Free Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
-    fi
-
     requiredDiskSpaceSizeGB=$([ "$installerMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
     if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 * 1000 * 1000 )) ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
@@ -299,7 +295,7 @@ fvStatus=$( /usr/bin/fdesetup status | /usr/bin/head -1 )
 
 ## Run system requirement checks
 validate_power_status
-validate_free_space "$installerVersionMajor" "$installerVersionMinor"
+validate_free_space "$installerVersionMajor"
 
 ## Don't waste the users time, exit here if system requirements are not met
 if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
