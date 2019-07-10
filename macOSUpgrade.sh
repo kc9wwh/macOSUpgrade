@@ -237,7 +237,7 @@ validate_free_space() {
     ## 10.13.4 or later, diskutil info has 'Free Space'.
     freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep -E "(Available Space)|(Free Space)" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
 
-    ## Check if free space > 15GB (10.13) or 20GB (10.14+)
+    ## Check if free space > 15GB (install 10.13) or 20GB (install 10.14+)
     requiredDiskSpaceSizeGB=$([ "$installerMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
     if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 * 1000 * 1000 )) ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
