@@ -60,9 +60,9 @@ OSInstaller="$4"
 ## Version of Installer OS. Use Parameter 5 in the JSS, or specify here.
 ## Example Command: /usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "/Applications/Install macOS High Sierra.app/Contents/SharedSupport/InstallInfo.plist"
 ## Example: 10.12.5
-version="$5"
-versionMajor=$( /bin/echo "$version" | /usr/bin/awk -F. '{print $2}' )
-versionMinor=$( /bin/echo "$version" | /usr/bin/awk -F. '{print $3}' )
+installerVersion="$5"
+installerVersionMajor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{print $2}' )
+installerVersionMinor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{print $3}' )
 
 ## Custom Trigger used for download. Use Parameter 6 in the JSS, or specify here.
 ## This should match a custom trigger for a policy that contains just the
@@ -93,7 +93,7 @@ unsuccessfulDownload=0
 eraseInstall="$8"
 if [ "$eraseInstall" != "1" ]; then eraseInstall=0 ; fi
 # macOS Installer 10.13.3 or ealier set 0 to it.
-if [ "$versionMajor${versionMinor:=0}" -lt 134 ]; then
+if [ "$installerVersionMajor${installerVersionMinor:=0}" -lt 134 ]; then
     eraseInstall=0
 fi
 
@@ -104,7 +104,7 @@ userDialog="$9"
 if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 
 # Control for auth reboot execution.
-if [ "$versionMajor" -ge 14 ]; then
+if [ "$installerVersionMajor" -ge 14 ]; then
     # Installer of macOS 10.14 or later set cancel to auth reboot.
     cancelFVAuthReboot=1
 else
@@ -230,16 +230,19 @@ validate_power_status() {
 }
 
 validate_free_space() {
+    local installerMajor installerMinor freeSpace requiredDiskSpaceSizeGB
+
+    installerMajor="$1"
+    installerMinor="$2"
+
     ## Check if free space > 15GB (10.13) or 20GB (10.14+)
-    osMajor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $2}' )
-    osMinor=$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{print $3}' )
-    if [[ $osMajor -eq 12 ]] || [[ $osMajor -eq 13 && $osMinor -lt 4 ]]; then
+    if [[ "$installerMajor" -eq 12 ]] || [[ "$installerMajor" -eq 13 && "$installerMinor" -lt 4 ]]; then
         freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Available Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
     else
         freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep "Free Space" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
     fi
 
-    requiredDiskSpaceSizeGB=$([ "$osMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
+    requiredDiskSpaceSizeGB=$([ "$installerMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
     if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 * 1000 * 1000 )) ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
     else
@@ -296,7 +299,7 @@ fvStatus=$( /usr/bin/fdesetup status | /usr/bin/head -1 )
 
 ## Run system requirement checks
 validate_power_status
-validate_free_space
+validate_free_space "$installerVersionMajor" "$installerVersionMinor"
 
 ## Don't waste the users time, exit here if system requirements are not met
 if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
@@ -315,9 +318,9 @@ loopCount=0
 while [ "$loopCount" -lt 3 ]; do
     if [ -e "$OSInstaller" ]; then
         /bin/echo "$OSInstaller found, checking version."
-        OSVersion=$(/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist")
-        /bin/echo "OSVersion is $OSVersion"
-        if [ "$OSVersion" = "$version" ]; then
+        currentInstallerVersion=$(/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist")
+        /bin/echo "OSVersion is $currentInstallerVersion"
+        if [ "$currentInstallerVersion" = "$installerVersion" ]; then
             /bin/echo "Installer found, version matches. Verifying checksum..."
             verifyChecksum
         else
@@ -401,9 +404,9 @@ EOF
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 if [ "$cancelFVAuthReboot" -eq 0 ]; then
     ## Determine Program Argument
-    if [ "$osMajor" -ge 11 ]; then
+    if [ "$installerVersionMajor" -ge 11 ]; then
         progArgument="osinstallersetupd"
-    elif [ "$osMajor" -eq 10 ]; then
+    elif [ "$installerVersionMajor" -eq 10 ]; then
         progArgument="osinstallersetupplaind"
     fi
 
@@ -471,7 +474,7 @@ startosinstallOptions+=(
 )
 
 ## Set version specific startosinstall options
-if [ "$versionMajor" -lt 14 ]; then
+if [ "$installerVersionMajor" -lt 14 ]; then
     # This variable may have space. Therefore, escape value with duble quotation
     startosinstallOptions+=("--applicationpath \"$OSInstaller\"")
 fi
