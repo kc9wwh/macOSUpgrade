@@ -230,12 +230,16 @@ validate_power_status() {
 }
 
 validate_free_space() {
-    local installerMajor freeSpace requiredDiskSpaceSizeGB
+    local installerMajor diskInfoPlist freeSpace requiredDiskSpaceSizeGB
 
     installerMajor="$1"
 
-    ## 10.13.4 or later, diskutil info has 'Free Space'.
-    freeSpace=$( /usr/sbin/diskutil info / | /usr/bin/grep -E "(Available Space)|(Free Space)" | /usr/bin/awk '{print $6}' | /usr/bin/cut -c 2- )
+    diskInfoPlist=$(/usr/sbin/diskutil info -plist /)
+
+    ## 10.13.4 or later, diskutil info command output changes key from 'AvailableSpace' to 'Free Space' about disk space.
+    freeSpace=$(
+    /usr/libexec/PlistBuddy -c "Print :FreeSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :AvailableSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null
+    )
 
     ## Check if free space > 15GB (install 10.13) or 20GB (install 10.14+)
     requiredDiskSpaceSizeGB=$([ "$installerMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
