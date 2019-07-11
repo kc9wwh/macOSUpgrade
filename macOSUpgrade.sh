@@ -315,7 +315,7 @@ while [ "$loopCount" -lt 3 ]; do
     if [ -e "$OSInstaller" ]; then
         /bin/echo "$OSInstaller found, checking version."
         currentInstallerVersion=$(/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist")
-        /bin/echo "OSVersion is $currentInstallerVersion"
+        /bin/echo "Found macOS installer for version $currentInstallerVersion."
         if [ "$currentInstallerVersion" = "$installerVersion" ]; then
             /bin/echo "Installer found, version matches. Verifying checksum..."
             verifyChecksum
