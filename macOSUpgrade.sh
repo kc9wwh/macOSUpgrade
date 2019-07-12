@@ -319,7 +319,7 @@ If you continue to experience this issue, please contact the IT Support Center."
     cleanExit 1
 fi
 
-##Check for existing OS installer
+## Check for existing OS installer
 loopCount=0
 while [ "$loopCount" -lt 3 ]; do
     if [ -e "$OSInstaller" ]; then
@@ -330,7 +330,7 @@ while [ "$loopCount" -lt 3 ]; do
             /bin/echo "Installer found, version matches. Verifying checksum..."
             verifyChecksum
         else
-            ##Delete old version.
+            ## Delete old version.
             /bin/echo "Installer found, but old. Deleting..."
             /bin/rm -rf "$OSInstaller"
             /bin/sleep 2
