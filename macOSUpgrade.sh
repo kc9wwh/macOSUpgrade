@@ -230,16 +230,22 @@ validate_power_status() {
 }
 
 validate_free_space() {
-    local installerMajor diskInfoPlist freeSpace requiredDiskSpaceSizeGB
+    local installerMajor diskInfoPlist freeSpace requiredDiskSpaceSizeGB installerPath installerSizeBytes
 
     installerMajor="$1"
+    installerPath="$2"
 
     diskInfoPlist=$(/usr/sbin/diskutil info -plist /)
-
     ## 10.13.4 or later, diskutil info command output changes key from 'AvailableSpace' to 'Free Space' about disk space.
     freeSpace=$(
     /usr/libexec/PlistBuddy -c "Print :FreeSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :AvailableSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null
     )
+
+    ## The free space calculation also includes the installer, so it is excluded.
+    if [ -e "$installerPath" ]; then
+        installerSizeBytes=$(/usr/bin/du -s "$installerPath" | /usr/bin/awk '{print $1}' | /usr/bin/xargs)
+        freeSpace=$((freeSpace + installerSizeBytes))
+    fi
 
     ## Check if free space > 15GB (install 10.13) or 20GB (install 10.14+)
     requiredDiskSpaceSizeGB=$([ "$installerMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
@@ -299,7 +305,7 @@ fvStatus=$( /usr/bin/fdesetup status | /usr/bin/head -1 )
 
 ## Run system requirement checks
 validate_power_status
-validate_free_space "$installerVersionMajor"
+validate_free_space "$installerVersionMajor" "$OSInstaller"
 
 ## Don't waste the users time, exit here if system requirements are not met
 if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
@@ -313,7 +319,7 @@ If you continue to experience this issue, please contact the IT Support Center."
     cleanExit 1
 fi
 
-##Check for existing OS installer
+## Check for existing OS installer
 loopCount=0
 while [ "$loopCount" -lt 3 ]; do
     if [ -e "$OSInstaller" ]; then
@@ -324,7 +330,7 @@ while [ "$loopCount" -lt 3 ]; do
             /bin/echo "Installer found, version matches. Verifying checksum..."
             verifyChecksum
         else
-            ##Delete old version.
+            ## Delete old version.
             /bin/echo "Installer found, but old. Deleting..."
             /bin/rm -rf "$OSInstaller"
             /bin/sleep 2
