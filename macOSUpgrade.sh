@@ -160,7 +160,6 @@ warnIcon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/Alert
 ## Icon to display when errors are found
 errorIcon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/AlertStopIcon.icns"
 
-<<<<<<< HEAD
 ## The startossinstall log file path
 osinstallLogfile="/var/log/startosinstall.log"
 
@@ -169,10 +168,9 @@ caffeinatePID=""
 
 ## The startossinstall command option array
 declare -a startosinstallOptions=()
-=======
-##Determine binary name
-binaryNameForOSInstallerSetup=$([ "$osMajor" -ge 11 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
->>>>>>> 84e6e60... remove cafinate processes before start running macOSUpgrade.sh
+
+## Determine binary name
+binaryNameForOSInstallerSetup=$([ "$installerVersionMajor" -ge 11 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
@@ -298,9 +296,6 @@ cleanExit() {
 # SYSTEM CHECKS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-<<<<<<< HEAD
-## Caffeinate
-=======
 ## If previous processes remain for some reason, the installation will freeze, so kill it.
 killingProcesses=("caffeinate" "startosinstall" "$binaryNameForOSInstallerSetup")
 for processName in "${killingProcesses[@]}"; do
@@ -309,8 +304,7 @@ for processName in "${killingProcesses[@]}"; do
     /usr/bin/killall "$processName" 2>&1 || true
 done
 
-##Caffeinate
->>>>>>> 84e6e60... remove cafinate processes before start running macOSUpgrade.sh
+## Caffeinate
 /usr/bin/caffeinate -dis &
 caffeinatePID=$!
 
@@ -474,7 +468,7 @@ else
     jamfHelperPID=$!
 fi
 
-##Load LaunchAgent
+## Load LaunchAgent
 if [ "$fvStatus" = "FileVault is On." ] && \
    [ "$currentUser" != "root" ] && \
    [ "$cancelFVAuthReboot" -eq 0 ] ; then
