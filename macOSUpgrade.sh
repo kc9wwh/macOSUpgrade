@@ -116,7 +116,7 @@ fi
 ## This variable is OPTIONAL
 ## Use Parameter 10 in the JSS.
 installPackagePathWithInstallComplication="${10}"
-if [ "$versionMajor" -lt 13 ] && [ -n "$installPackagePathWithInstallComplication" ]; then
+if [ "$installerVersionMajor" -lt 13 ] && [ -n "$installPackagePathWithInstallComplication" ]; then
     # Installer of macOS less than 10.13 is not support install package option.
     installPackagePathWithInstallComplication=""
     /bin/echo "Installer of macOS less than 10.13 is not support install package option."
