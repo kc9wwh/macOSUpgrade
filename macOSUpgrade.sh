@@ -169,6 +169,9 @@ caffeinatePID=""
 ## The startossinstall command option array
 declare -a startosinstallOptions=()
 
+## Determine binary name
+binaryNameForOSInstallerSetup=$([ "$installerVersionMajor" -ge 11 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -293,6 +296,14 @@ cleanExit() {
 # SYSTEM CHECKS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+## If previous processes remain for some reason, the installation will freeze, so kill it.
+killingProcesses=("caffeinate" "startosinstall" "$binaryNameForOSInstallerSetup")
+for processName in "${killingProcesses[@]}"; do
+    [ -z "$processName" ] && continue
+    /bin/echo "Killing $processName processes."
+    /usr/bin/killall "$processName" 2>&1 || true
+done
+
 ## Caffeinate
 /usr/bin/caffeinate -dis &
 caffeinatePID=$!
@@ -409,13 +420,6 @@ EOF
 # LAUNCH AGENT FOR FILEVAULT AUTHENTICATED REBOOTS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 if [ "$cancelFVAuthReboot" -eq 0 ]; then
-    ## Determine Program Argument
-    if [ "$installerVersionMajor" -ge 11 ]; then
-        progArgument="osinstallersetupd"
-    elif [ "$installerVersionMajor" -eq 10 ]; then
-        progArgument="osinstallersetupplaind"
-    fi
-
     /bin/cat << EOP > "$osinstallersetupdAgentSettingsFilePath"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -436,7 +440,7 @@ if [ "$cancelFVAuthReboot" -eq 0 ]; then
     <true/>
     <key>ProgramArguments</key>
     <array>
-        <string>$OSInstaller/Contents/Frameworks/OSInstallerSetup.framework/Resources/$progArgument</string>
+        <string>$OSInstaller/Contents/Frameworks/OSInstallerSetup.framework/Resources/$binaryNameForOSInstallerSetup</string>
     </array>
 </dict>
 </plist>
