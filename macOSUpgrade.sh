@@ -48,23 +48,39 @@
 # Written by: Joshua Roskos | Jamf
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# APS Updates added 11/28/2019
+#
+# Updated "validate_free_space" to work with Catalina – freeSpace
+# Added "Print :APFSContainerFree"
+# /usr/libexec/PlistBuddy -c "Print :APFSContainerFree" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :FreeSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :AvailableSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null
+# 
+# Updated loopCout to work with Stub/Lite installer – Stub/Lite installer does not specify a macOS version.
+# Check to see if the installer version matches, or if the installer does not have InstallInfo.plist.
+# if [ "$currentInstallerVersion" = "$installerVersion" ] || [[ ! -e "$OSInstaller/Contents/SharedSupport/InstallInfo.plist" ]]; then
+#
+# Updated variable "currentUser"
+#
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # USER VARIABLES
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-## Specify path to OS installer. Use Parameter 4 in the JSS, or specify here
+## Specify path to OS installer – Use Parameter 4 in the JSS, or specify here.
+## Parameter Label: Path to the macOS installer
 ## Example: /Applications/Install macOS High Sierra.app
 OSInstaller="$4"
 
 ## Version of Installer OS. Use Parameter 5 in the JSS, or specify here.
+## Parameter Label: Version of macOS
 ## Example Command: /usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "/Applications/Install macOS High Sierra.app/Contents/SharedSupport/InstallInfo.plist"
 ## Example: 10.12.5
 installerVersion="$5"
 installerVersionMajor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{print $2}' )
 installerVersionMinor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{print $3}' )
 
-## Custom Trigger used for download. Use Parameter 6 in the JSS, or specify here.
+## Custom Trigger used for download – Use Parameter 6 in the JSS, or specify here.
+## Parameter Label: Download Policy Trigger
 ## This should match a custom trigger for a policy that contains just the
 ## MacOS installer. Make sure that the policy is scoped properly
 ## to relevant computers and/or users, or else the custom trigger will
@@ -72,7 +88,8 @@ installerVersionMinor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{prin
 ## Example trigger name: download-sierra-install
 download_trigger="$6"
 
-## MD5 Checksum of InstallESD.dmg
+## MD5 Checksum of InstallESD.dmg – Use Parameter 7 in the JSS.
+## Parameter Label: installESD Checksum (optional)
 ## This variable is OPTIONAL
 ## Leave the variable BLANK if you do NOT want to verify the checksum (DEFAULT)
 ## Example Command: /sbin/md5 /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
@@ -90,6 +107,7 @@ unsuccessfulDownload=0
 ## Disabled by default
 ## Options: 0 = Disabled / 1 = Enabled
 ## Use Parameter 8 in the JSS.
+## Parameter Label: Upgrade or Erase (0 or 1)
 eraseInstall="$8"
 if [ "$eraseInstall" != "1" ]; then eraseInstall=0 ; fi
 # macOS Installer 10.13.3 or ealier set 0 to it.
@@ -100,6 +118,7 @@ fi
 ## Enter 0 for Full Screen, 1 for Utility window (screenshots available on GitHub)
 ## Full Screen by default
 ## Use Parameter 9 in the JSS.
+## Parameter Label: Full Screen or Dialog Box (0 or 1)
 userDialog="$9"
 if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 
@@ -309,8 +328,8 @@ done
 /usr/bin/caffeinate -dis &
 caffeinatePID=$!
 
-## Get Current User
-currentUser=$( /usr/bin/stat -f %Su /dev/console )
+##Get Current User
+currentUser=$(/bin/echo 'show State:/Users/ConsoleUser' | /usr/sbin/scutil | /usr/bin/awk '/Name / { print $3 }')
 
 ## Check if FileVault Enabled
 fvStatus=$( /usr/bin/fdesetup status | /usr/bin/head -1 )
@@ -338,7 +357,8 @@ while [ "$loopCount" -lt 3 ]; do
         /bin/echo "$OSInstaller found, checking version."
         currentInstallerVersion=$(/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist")
         /bin/echo "Found macOS installer for version $currentInstallerVersion."
-        if [ "$currentInstallerVersion" = "$installerVersion" ]; then
+        ## Check to see if the installer version matches, or if the installer does not have InstallInfo.plist.
+        if [ "$currentInstallerVersion" = "$installerVersion" ] || [[ ! -e "$OSInstaller/Contents/SharedSupport/InstallInfo.plist" ]]; then
             /bin/echo "Installer found, version matches. Verifying checksum..."
             verifyChecksum
         else
