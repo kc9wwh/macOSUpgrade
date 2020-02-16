@@ -72,10 +72,10 @@ if [ "$ANS" != y ]; then exit 0 ;fi
 echo "Ok, building package archive file of $( basename "$OSInstaller"). Wait few minutes."
 
 PKGID="macOSUpgrade.helper-tools.pkgbuild"
-PKGFILE="${HOME}/Desktop/$(basename "$OSInstaller" ).${osversion}.pkg"
+PKGFILE="${HOME}/Downloads/$(basename "$OSInstaller" ).${osversion}.pkg"
 workdir="$(/usr/bin/mktemp -d)"
 /bin/mkdir -p "$workdir/root/Applications"
-/bin/cp -a "$OSInstaller" "$workdir/root/Applications"
+/bin/cp -a "${OSInstaller%/}" "$workdir/root/Applications"
 
 if [ -f "$PKGFILE" ]; then
    /bin/mv "${PKGFILE}" "${PKGFILE%.pkg}.previous.$(uuidgen).pkg"
