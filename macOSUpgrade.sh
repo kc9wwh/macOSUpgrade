@@ -510,7 +510,7 @@ if [ "$installerVersionMajor" -lt 14 ]; then
     startosinstallOptions+=("--applicationpath \"$OSInstaller\"")
 fi
 
-if [ "installerVersionMajor" -gt 14 ]; then
+if [ "$installerVersionMajor" -gt 14 ]; then
     # The --forcequitapps option will force Self Service to quit, which prevents Self Service from cancelling a restart
     startosinstallOptions+=("--forcequitapps")
 fi
