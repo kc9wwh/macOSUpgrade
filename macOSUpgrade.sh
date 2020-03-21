@@ -289,7 +289,7 @@ verifyChecksum() {
             return
         else
             /bin/echo "Checksum: Not Valid"
-            /bin/echo "Beginning new dowload of installer"
+            /bin/echo "Beginning new download of installer"
             /bin/rm -rf "$OSInstaller"
             /bin/sleep 2
             downloadInstaller
