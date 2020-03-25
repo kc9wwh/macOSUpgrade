@@ -395,6 +395,22 @@ fi
 /bin/cat << EOF > "$finishOSInstallScriptFilePath"
 #!/bin/bash
 ## First Run Script to remove the installer.
+
+## Wait until /var/db/.AppleUpgrade disappears
+while [ -e /var/db/.AppleUpgrade ];
+do
+	echo "\$(date "+%a %h %d %H:%M:%S"): Waiting for /var/db/.AppleUpgrade to disappear."
+    sleep 60
+done
+    
+## Wait until the upgrade process completes
+INSTALLER_PROGRESS_PROCESS=\$(pgrep -l "Installer Progress")
+until [ "\$INSTALLER_PROGRESS_PROCESS" = "" ];
+do
+	echo "\$(date "+%a %h %d %H:%M:%S"): Waiting for Installer Progress to complete."
+    sleep 60
+    INSTALLER_PROGRESS_PROCESS=\$(pgrep -l "Installer Progress")
+done
 ## Clean up files
 /bin/rm -fr "$OSInstaller"
 ## Update Device Inventory
