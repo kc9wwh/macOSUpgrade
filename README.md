@@ -1,5 +1,5 @@
 # macOS Self Service Upgrade Process
-###### Workflow for doing an in-place upgrade without user interaction.
+###### Workflow for doing an in-place upgrades.
 
 [![Build Status](https://travis-ci.com/kc9wwh/macOSUpgrade.svg?branch=master)](https://travis-ci.com/kc9wwh/macOSUpgrade)
 ___
