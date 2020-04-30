@@ -1,0 +1,19 @@
+Example of Required Self Service Description
+
+This process will upgrade your Mac to MacOS Catalina 10.15.4.
+
+*Before proceeding...*
+* Please ensure __all work is saved__
+* Close any apps you may have open
+
+_This process will take 30-90 minutes to complete, during which time you will not be able to use your Mac._
+
+Example of Factory Reset Self Service Description
+
+This process will erase and re-install MacOS Catalina 10.15.4 on your Mac.
+
+*Before proceeding...*
+* Please ensure __all work is saved__
+* Close any apps you may have open
+
+_This process will take 30-90 minutes to complete, during which time you will not be able to use your Mac._
