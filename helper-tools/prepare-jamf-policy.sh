@@ -37,21 +37,39 @@ if [ ! -d  "${OSInstaller}/Contents/SharedSupport" ]; then
     exit 1
 fi
 
-if [ ! -f  "${OSInstaller}/Contents/SharedSupport/InstallInfo.plist" ]; then
-    echo "Not found ${OSInstaller}/Contents/SharedSupport/InstallInfo.plist"
+if [ -f "${OSInstaller}/Contents/SharedSupport/InstallInfo.plist" ]; then
+    # macOS 10.15 or ealier.
+    plist_type=1015
+    plist="${OSInstaller}/Contents/SharedSupport/InstallInfo.plist"
+elif [ -f "${OSInstaller}/Contents/Info.plist" ]; then
+    # macOS 11.0 or later.
+    plist_type=1100
+    plist="${OSInstaller}/Contents/Info.plist"
+else
+    echo "Not found plist file."
     echo "Unknown installer type. Apple may change something."
     exit 1
 fi
 
-if [ ! -f  "${OSInstaller}/Contents/SharedSupport/InstallESD.dmg" ]; then
-    echo "Not found ${OSInstaller}/Contents/SharedSupport/InstallESD.dmg"
+if [ -f "${OSInstaller}/Contents/SharedSupport/InstallESD.dmg" ]; then
+    # macOS 10.15 or ealier.
+    dmg="${OSInstaller}/Contents/SharedSupport/InstallESD.dmg"
+elif [ -f "${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg" ]; then
+    # macOS 11.0 or later.
+    dmg="${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg"
+else
+    echo "Not found dmg file."
     echo "This is not expected installer type."
     exit 1
 fi
 
-osversion=$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "${OSInstaller}/Contents/SharedSupport/InstallInfo.plist")
+if [ "$plist_type" -lt 1100 ]; then
+    osversion=$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "$plist")
+else
+    osversion=$(/usr/libexec/PlistBuddy -c "print DTPlatformVersion" "$plist")
+fi
 echo "Wait seconds, getting checksum..."
-checksum=$(/sbin/md5 -r "${OSInstaller}/Contents/SharedSupport/InstallESD.dmg" | /usr/bin/awk '{print $1}')
+checksum=$(/sbin/md5 -r "$dmg" | /usr/bin/awk '{print $1}')
 
 cat <<_RESULT
 
