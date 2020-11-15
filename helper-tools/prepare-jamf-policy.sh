@@ -84,7 +84,6 @@ Parameter 7: $checksum
 
 _RESULT
 
-workdir="$(/usr/bin/mktemp -d)"
 if [ "$plist_type" -lt 1100 ]; then
     # Build a package of installer
     if [ ! -x /usr/bin/pkgbuild ]; then exit 0; fi
@@ -93,6 +92,7 @@ if [ "$plist_type" -lt 1100 ]; then
 
     echo "Ok, building package archive file of $( basename "$OSInstaller"). Wait few minutes."
 
+    workdir="$(/usr/bin/mktemp -d)"
     PKGID="macOSUpgrade.helper-tools.pkgbuild"
     PKGFILE="${HOME}/Downloads/$(basename "$OSInstaller" ).${osversion}.pkg"
     /bin/mkdir -p "$workdir/root/Applications"
@@ -114,6 +114,7 @@ else
 
     echo "Ok, building DMG file of $( basename "$OSInstaller"). Wait few minutes."
 
+    workdir="$(/usr/bin/mktemp -d)"
     temp_dmg="${workdir}/osinstaller.dmg"
     dist_dmg="${HOME}/Downloads/$(basename "$OSInstaller" ).${osversion}.dmg"
     sizeOfInstaller="$( /usr/bin/du -sm "$OSInstaller" | awk '{print $1}' )"
