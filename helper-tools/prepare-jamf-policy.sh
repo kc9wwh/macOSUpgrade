@@ -37,21 +37,40 @@ if [ ! -d  "${OSInstaller}/Contents/SharedSupport" ]; then
     exit 1
 fi
 
-if [ ! -f  "${OSInstaller}/Contents/SharedSupport/InstallInfo.plist" ]; then
-    echo "Not found ${OSInstaller}/Contents/SharedSupport/InstallInfo.plist"
-    echo "Unknown installer type. Apple may change something."
-    exit 1
-fi
-
-if [ ! -f  "${OSInstaller}/Contents/SharedSupport/InstallESD.dmg" ]; then
-    echo "Not found ${OSInstaller}/Contents/SharedSupport/InstallESD.dmg"
+if [ -f "${OSInstaller}/Contents/SharedSupport/InstallESD.dmg" ]; then
+    # macOS 10.15 or ealier.
+    dmg="${OSInstaller}/Contents/SharedSupport/InstallESD.dmg"
+    plist="${OSInstaller}/Contents/SharedSupport/InstallInfo.plist"
+    plist_type=1015
+    if [ ! -f "$plist" ]; then
+        echo "Not found file: $plist"
+        echo "Unknown installer type."
+        exit 1
+    fi
+elif [ -f "${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg" ]; then
+    # macOS 11.0 or later.
+    dmg="${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg"
+    plist="${OSInstaller}/Contents/Info.plist"
+    plist_type=1100
+    if [ ! -f "$plist" ]; then
+        echo "Not found file: $plist"
+        echo "Unknown installer type."
+        exit 1
+    fi
+else
+    echo "Not found dmg file."
     echo "This is not expected installer type."
     exit 1
 fi
 
-osversion=$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "${OSInstaller}/Contents/SharedSupport/InstallInfo.plist")
+if [ "$plist_type" -lt 1100 ]; then
+    osversion=$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "$plist")
+else
+    osversion=$(/usr/libexec/PlistBuddy -c "print DTPlatformVersion" "$plist")
+fi
+
 echo "Wait seconds, getting checksum..."
-checksum=$(/sbin/md5 -r "${OSInstaller}/Contents/SharedSupport/InstallESD.dmg" | /usr/bin/awk '{print $1}')
+checksum=$(/sbin/md5 -r "$dmg" | /usr/bin/awk '{print $1}')
 
 cat <<_RESULT
 
@@ -65,23 +84,55 @@ Parameter 7: $checksum
 
 _RESULT
 
-# Build a package of installer
-if [ ! -x /usr/bin/pkgbuild ]; then exit 0; fi
-read -r -p "Would you need a package archive of $( basename "$OSInstaller" )? [y/n]: " ANS
-if [ "$ANS" != y ]; then exit 0 ;fi
-echo "Ok, building package archive file of $( basename "$OSInstaller"). Wait few minutes."
+if [ "$plist_type" -lt 1100 ]; then
+    # Build a package of installer
+    if [ ! -x /usr/bin/pkgbuild ]; then exit 0; fi
+    read -r -p "Would you need a package archive of $( basename "$OSInstaller" )? [y/n]: " ANS
+    if [ "$ANS" != y ]; then exit 0 ;fi
 
-PKGID="macOSUpgrade.helper-tools.pkgbuild"
-PKGFILE="${HOME}/Downloads/$(basename "$OSInstaller" ).${osversion}.pkg"
-workdir="$(/usr/bin/mktemp -d)"
-/bin/mkdir -p "$workdir/root/Applications"
-/bin/cp -a "${OSInstaller%/}" "$workdir/root/Applications"
+    echo "Ok, building package archive file of $( basename "$OSInstaller"). Wait few minutes."
 
-if [ -f "$PKGFILE" ]; then
-   /bin/mv "${PKGFILE}" "${PKGFILE%.pkg}.previous.$(uuidgen).pkg"
+    workdir="$(/usr/bin/mktemp -d)"
+    PKGID="macOSUpgrade.helper-tools.pkgbuild"
+    PKGFILE="${HOME}/Downloads/$(basename "$OSInstaller" ).${osversion}.pkg"
+    /bin/mkdir -p "$workdir/root/Applications"
+    /bin/cp -a "${OSInstaller%/}" "$workdir/root/Applications"
+
+    if [ -f "$PKGFILE" ]; then
+        /bin/mv "${PKGFILE}" "${PKGFILE%.pkg}.previous.$(uuidgen).pkg"
+    fi
+
+    if /usr/bin/pkgbuild --identifier "$PKGID" --root "${workdir}/root" "$PKGFILE" > "/tmp/pkgbuid.$( date +%F_%H%M%S ).log" ; then
+        echo "Done. $PKGFILE"
+    else
+        echo "FAILED."
+    fi
+else
+    # https://www.jamf.com/jamf-nation/discussions/37294/package-big-sur-installer-with-composer-issue
+    read -r -p "Would you need a DMG file of $( basename "$OSInstaller" )? [y/n]: " ANS
+    if [ "$ANS" != y ]; then exit 0 ;fi
+
+    echo "Ok, building DMG file of $( basename "$OSInstaller"). Wait few minutes."
+
+    workdir="$(/usr/bin/mktemp -d)"
+    temp_dmg="${workdir}/osinstaller.dmg"
+    dist_dmg="${HOME}/Downloads/$(basename "$OSInstaller" ).${osversion}.dmg"
+    sizeOfInstaller="$( /usr/bin/du -sm "$OSInstaller" | awk '{print $1}' )"
+    volumename="macOSInstaller"
+
+    /usr/bin/hdiutil create -size $(( sizeOfInstaller + 256 ))m -volname "$volumename" "$temp_dmg" -fs APFS > /dev/null
+    devfile="$( /usr/bin/hdiutil attach -readwrite -nobrowse "$temp_dmg" | awk '$NF == "GUID_partition_scheme" {print $1}' )"
+
+    /bin/mkdir "/Volumes/${volumename}/Applications"
+    /bin/cp -a "${OSInstaller%/}" "/Volumes/${volumename}/Applications"
+    /usr/bin/hdiutil detach "$devfile" > /dev/null
+
+    if [ -f "$dist_dmg" ]; then
+        /bin/mv "${dist_dmg}" "${dist_dmg%.dmg}.previous.$(uuidgen).dmg"
+    fi
+
+    /usr/bin/hdiutil convert "$temp_dmg" -format ULFO -o "$dist_dmg" > /dev/null
+
+    echo "Done. $dist_dmg"
 fi
-
-/usr/bin/pkgbuild --identifier "$PKGID" --root "${workdir}/root" "$PKGFILE" > "/tmp/pkgbuid.$( date +%F_%H%M%S ).log"
-
 /bin/rm -rf "$workdir"
-echo "Done. $PKGFILE"
