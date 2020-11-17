@@ -88,11 +88,12 @@ installerVersionMinor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{prin
 ## Example trigger name: download-sierra-install
 download_trigger="$6"
 
-## MD5 Checksum of InstallESD.dmg – Use Parameter 7 in the JSS.
+## MD5 Checksum of InstallESD.dmg/SharedSupport.dmg – Use Parameter 7 in the JSS.
 ## Parameter Label: installESD Checksum (optional)
 ## This variable is OPTIONAL
 ## Leave the variable BLANK if you do NOT want to verify the checksum (DEFAULT)
 ## Example Command: /sbin/md5 /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
+## Example Command: /sbin/md5 /Applications/Install\ macOS\ Big\ Sur.app/Contents/SharedSupport/SharedSupport.dmg
 ## Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
 installESDChecksum="$7"
 
@@ -191,6 +192,9 @@ declare -a startosinstallOptions=()
 ## Determine binary name
 binaryNameForOSInstallerSetup=$([ "$installerVersionMajor" -ge 11 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
 
+## Determine binary for checksum
+binaryNameForCheckSum=$([ "$installerVersionMajor" -ge 11 ] && /bin/echo "SharedSupport" || /bin/echo "InstallESD")
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -282,7 +286,7 @@ validate_free_space() {
 
 verifyChecksum() {
     if [ -n "$installESDChecksum" ]; then
-        osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/InstallESD.dmg" )
+        osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/${binaryNameForCheckSum}.dmg" )
         if [ "$osChecksum" = "$installESDChecksum" ]; then
             /bin/echo "Checksum: Valid"
             validChecksum=1
