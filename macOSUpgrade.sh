@@ -193,7 +193,7 @@ declare -a startosinstallOptions=()
 binaryNameForOSInstallerSetup=$([ "$installerVersionMajor" -ge 11 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
 
 ## Determine binary for checksum
-binaryNameForCheckSum=$([ "$installerVersionMajor" -ge 11 ] && /bin/echo "SharedSupport" || /bin/echo "InstallESD")
+binaryNameForCheckSum=$([ "$installerVersionMajor" -ge 11 ] && /bin/echo "InstallESD" || /bin/echo "SharedSupport")
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
