@@ -45,15 +45,16 @@ When you open the script you will find some user variables defined on lines 60-1
 
 **Staging the macOS Installer**
 
-In order for this script to work, you will have to have a copy of the macOS Installer that is available from the Mac App Store located in /Applications. One of the easiest ways to achieve this is to package the installer (in PKG format) with Composer as seen below and deploy the package via Jamf Pro.
+In order for this script to work, you will have to have a copy of the macOS Installer that is available from the Mac App Store located in /Applications. One of the easiest ways to achieve this is to package the installer as seen below and deploy the package via Jamf Pro.
 
 ![alt text](/imgs/composer.png)
 
-Otherwise it can also be packaged using the command line as shown below and deploy the package via Jamf Pro.
+Otherwise you can get a package of the installer with helper script as shown below and deploy the package via Jamf Pro.
 
 ```sh
-pkgbuild --install-location /Applications --component "/path/to/macOSInstallerApp" "/path/to/xxxxx.pkg"
+./helper-tools/prepare-jamf-policy.sh /Applications/Install\ macOS\ Big\ Sur.app
 ```
+
 
 **Example of Required Self Service Description**
 
