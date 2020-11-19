@@ -53,7 +53,7 @@
 # Updated "validate_free_space" to work with Catalina – freeSpace
 # Added "Print :APFSContainerFree"
 # /usr/libexec/PlistBuddy -c "Print :APFSContainerFree" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :FreeSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :AvailableSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null
-# 
+#
 # Updated loopCout to work with Stub/Lite installer – Stub/Lite installer does not specify a macOS version.
 # Check to see if the installer version matches, or if the installer does not have InstallInfo.plist.
 # if [ "$currentInstallerVersion" = "$installerVersion" ] || [[ ! -e "$OSInstaller/Contents/SharedSupport/InstallInfo.plist" ]]; then
@@ -76,8 +76,14 @@ OSInstaller="$4"
 ## Example Command: /usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "/Applications/Install macOS High Sierra.app/Contents/SharedSupport/InstallInfo.plist"
 ## Example: 10.12.5
 installerVersion="$5"
-installerVersionMajor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{print $2}' )
-installerVersionMinor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{print $3}' )
+installerVersionNumber="$( /bin/echo "$installerVersion" | /usr/bin/awk -F. 'N = $1 * 10 ** 4 + $2 * 10 ** 2 + $3 {print N}' )"
+if [ "$installerVersionNumber" -lt 110000 ]; then
+    installerDMG="${OSInstaller}/Contents/SharedSupport/InstallESD.dmg"
+    installerPlist="${OSInstaller}/Contents/SharedSupport/InstallInfo.plist"
+else
+    installerDMG="${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg"
+    installerPlist="${OSInstaller}/Contents/Info.plist"
+fi
 
 ## Custom Trigger used for download – Use Parameter 6 in the JSS, or specify here.
 ## Parameter Label: Download Policy Trigger
@@ -88,19 +94,18 @@ installerVersionMinor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{prin
 ## Example trigger name: download-sierra-install
 download_trigger="$6"
 
-## MD5 Checksum of InstallESD.dmg – Use Parameter 7 in the JSS.
+## MD5 Checksum of Installer dmg file – Use Parameter 7 in the JSS.
 ## Parameter Label: installESD Checksum (optional)
 ## This variable is OPTIONAL
 ## Leave the variable BLANK if you do NOT want to verify the checksum (DEFAULT)
 ## Example Command: /sbin/md5 /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
 ## Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
-installESDChecksum="$7"
-
-## Valid Checksum?  O (Default) for false, 1 for true.
-validChecksum=0
-
-## Unsuccessful Download?  0 (Default) for false, 1 for true.
-unsuccessfulDownload=0
+installerDMGChecksum="$7"
+if [ -n "$installerDMGChecksum" ]; then
+    doCheckDMGchecksum=yes
+else
+    doCheckDMGchecksum=no
+fi
 
 ## Erase & Install macOS (Factory Defaults)
 ## Requires macOS Installer 10.13.4 or later
@@ -111,7 +116,7 @@ unsuccessfulDownload=0
 eraseInstall="$8"
 if [ "$eraseInstall" != "1" ]; then eraseInstall=0 ; fi
 # macOS Installer 10.13.3 or ealier set 0 to it.
-if [ "$installerVersionMajor${installerVersionMinor:=0}" -lt 134 ]; then
+if [ "$installerVersionNumber" -lt 101304 ]; then
     eraseInstall=0
 fi
 
@@ -123,7 +128,7 @@ userDialog="$9"
 if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 
 # Control for auth reboot execution.
-if [ "$installerVersionMajor" -ge 14 ]; then
+if [ "$installerVersionNumber" -ge 101400 ]; then
     # Installer of macOS 10.14 or later set cancel to auth reboot.
     cancelFVAuthReboot=1
 else
@@ -189,7 +194,7 @@ caffeinatePID=""
 declare -a startosinstallOptions=()
 
 ## Determine binary name
-binaryNameForOSInstallerSetup=$([ "$installerVersionMajor" -ge 11 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
+binaryNameForOSInstallerSetup=$([ "$installerVersionNumber" -ge 101100 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
@@ -223,14 +228,31 @@ wait_for_ac_power() {
 }
 
 downloadInstaller() {
+    if [ ! -x /usr/local/jamf/bin/jamf ]; then
+        echo "Not found: /usr/local/jamf/bin/jamf"
+        return
+    fi
+
+    /bin/rm -rf "${OSInstaller:-/tmp/dummy.$$}"
+
     /bin/echo "Downloading macOS Installer..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
-        -windowType hud -windowPosition $dlPosition -title "$title" -alignHeading center -alignDescription left -description "$dldescription" \
-        -lockHUD -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" -iconSize 100 &
+        -windowType hud \
+        -windowPosition $dlPosition \
+        -title "$title" \
+        -alignHeading center \
+        -alignDescription left \
+        -description "$dldescription" \
+        -lockHUD \
+        -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" \
+        -iconSize 100 &
+
     ## Capture PID for Jamf Helper HUD
     jamfHUDPID=$!
+
     ## Run policy to cache installer
     /usr/local/jamf/bin/jamf policy -event "$download_trigger"
+
     ## Kill Jamf Helper HUD post download
     kill_process "$jamfHUDPID"
 }
@@ -252,9 +274,9 @@ validate_power_status() {
 }
 
 validate_free_space() {
-    local installerMajor diskInfoPlist freeSpace requiredDiskSpaceSizeGB installerPath installerSizeBytes
+    local installerVersion diskInfoPlist freeSpace requiredDiskSpaceSizeGB installerPath installerSizeBytes
 
-    installerMajor="$1"
+    installerVersion="$1"
     installerPath="$2"
 
     diskInfoPlist=$(/usr/sbin/diskutil info -plist /)
@@ -271,8 +293,8 @@ validate_free_space() {
     fi
 
     ## Check if free space > 15GB (install 10.13) or 20GB (install 10.14+)
-    requiredDiskSpaceSizeGB=$([ "$installerMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
-    if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 * 1000 * 1000 )) ]]; then
+    requiredDiskSpaceSizeGB=$([ "$installerVersion" -ge 101400 ] && /bin/echo "20" || /bin/echo "15")
+    if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 ** 3 )) ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
     else
         sysRequirementErrors+=("Has at least ${requiredDiskSpaceSizeGB}GB of Free Space")
@@ -281,23 +303,11 @@ validate_free_space() {
 }
 
 verifyChecksum() {
-    if [ -n "$installESDChecksum" ]; then
-        osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/InstallESD.dmg" )
-        if [ "$osChecksum" = "$installESDChecksum" ]; then
-            /bin/echo "Checksum: Valid"
-            validChecksum=1
-            return
-        else
-            /bin/echo "Checksum: Not Valid"
-            /bin/echo "Beginning new download of installer"
-            /bin/rm -rf "$OSInstaller"
-            /bin/sleep 2
-            downloadInstaller
-        fi
+    osChecksum=$( /sbin/md5 -q "$installerDMG" )
+    if [ "$osChecksum" = "$installerDMGChecksum" ]; then
+        /bin/echo "Valid"
     else
-        ## Checksum not specified as script argument, assume true
-        validChecksum=1
-        return
+        /bin/echo "Not Valid"
     fi
 }
 
@@ -336,7 +346,7 @@ fvStatus=$( /usr/bin/fdesetup status | /usr/bin/head -1 )
 
 ## Run system requirement checks
 validate_power_status
-validate_free_space "$installerVersionMajor" "$OSInstaller"
+validate_free_space "$installerVersionNumber" "$OSInstaller"
 
 ## Don't waste the users time, exit here if system requirements are not met
 if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
@@ -353,24 +363,38 @@ fi
 ## Check for existing OS installer
 loopCount=0
 while [ "$loopCount" -lt 3 ]; do
-    if [ -e "$OSInstaller" ]; then
-        /bin/echo "$OSInstaller found, checking version."
-        currentInstallerVersion=$(/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist")
+    if [ -d "$OSInstaller" ]; then
+        if [ "$doCheckDMGchecksum" = yes ]; then
+            /bin/echo "$OSInstaller found, checking version."
+        else
+            /bin/echo "$OSInstaller found. Do not checking version."
+            break
+        fi
+
+        if [ "$installerVersionNumber" -lt 1100 ]; then
+            currentInstallerVersion=$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "$installerPlist")
+        else
+            currentInstallerVersion=$(/usr/libexec/PlistBuddy -c "print DTPlatformVersion" "$installerPlist")
+        fi
         /bin/echo "Found macOS installer for version $currentInstallerVersion."
-        ## Check to see if the installer version matches, or if the installer does not have InstallInfo.plist.
-        if [ "$currentInstallerVersion" = "$installerVersion" ] || [[ ! -e "$OSInstaller/Contents/SharedSupport/InstallInfo.plist" ]]; then
+
+        if [ "$currentInstallerVersion" = "$installerVersion" ]; then
             /bin/echo "Installer found, version matches. Verifying checksum..."
-            verifyChecksum
         else
             ## Delete old version.
-            /bin/echo "Installer found, but old. Deleting..."
-            /bin/rm -rf "$OSInstaller"
-            /bin/sleep 2
+            /bin/echo "Installer found, but it's old one."
             downloadInstaller
+            ((loopCount++))
+            continue
         fi
-        if [ "$validChecksum" -eq 1 ]; then
+
+        checkResult="$( verifyChecksum )"
+        echo "Check sum: $checkResult"
+        if [ "$checkResult" = "Valid" ]; then
             unsuccessfulDownload=0
             break
+        else
+            downloadInstaller
         fi
     else
         downloadInstaller
@@ -406,7 +430,7 @@ do
 	echo "\$(date "+%a %h %d %H:%M:%S"): Waiting for /var/db/.AppleUpgrade to disappear." >> /usr/local/jamfps/firstbootupgrade.log
     sleep 60
 done
-    
+
 ## Wait until the upgrade process completes
 INSTALLER_PROGRESS_PROCESS=\$(pgrep -l "Installer Progress")
 until [ "\$INSTALLER_PROGRESS_PROCESS" = "" ];
@@ -525,12 +549,12 @@ startosinstallOptions+=(
 )
 
 ## Set version specific startosinstall options
-if [ "$installerVersionMajor" -lt 14 ]; then
+if [ "$installerVersionNumber" -lt 101400 ]; then
     # This variable may have space. Therefore, escape value with duble quotation
     startosinstallOptions+=("--applicationpath \"$OSInstaller\"")
 fi
 
-if [ "$installerVersionMajor" -gt 14 ]; then
+if [ "$installerVersionNumber" -gt 101400 ]; then
     # The --forcequitapps option will force Self Service to quit, which prevents Self Service from cancelling a restart
     startosinstallOptions+=("--forcequitapps")
 fi
