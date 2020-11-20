@@ -69,7 +69,7 @@
 ## Specify path to OS installer – Use Parameter 4 in the JSS, or specify here.
 ## Parameter Label: Path to the macOS installer
 ## Example: /Applications/Install macOS High Sierra.app
-OSInstaller="$4"
+OSInstaller="$( echo "$4" | /usr/bin/xargs )"
 
 ## Version of Installer OS. Use Parameter 5 in the JSS, or specify here.
 ## Parameter Label: Version of macOS
@@ -92,7 +92,7 @@ fi
 ## to relevant computers and/or users, or else the custom trigger will
 ## not be picked up. Use a separate policy for the script itself.
 ## Example trigger name: download-sierra-install
-download_trigger="$6"
+download_trigger="$( echo "$6" | /usr/bin/xargs )"
 
 ## MD5 Checksum of Installer dmg file – Use Parameter 7 in the JSS.
 ## Parameter Label: installESD Checksum (optional)
@@ -100,7 +100,7 @@ download_trigger="$6"
 ## Leave the variable BLANK if you do NOT want to verify the checksum (DEFAULT)
 ## Example Command: /sbin/md5 /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
 ## Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
-installerDMGChecksum="$7"
+installerDMGChecksum="$( echo "$7" | /usr/bin/xargs )"
 if [ -n "$installerDMGChecksum" ]; then
     doCheckDMGchecksum=yes
 else
@@ -114,9 +114,10 @@ fi
 ## Use Parameter 8 in the JSS.
 ## Parameter Label: Upgrade or Erase (0 or 1)
 eraseInstall="$8"
-if [ "$eraseInstall" != "1" ]; then eraseInstall=0 ; fi
 # macOS Installer 10.13.3 or ealier set 0 to it.
 if [ "$installerVersionNumber" -lt 101304 ]; then
+    eraseInstall=0
+elif [ "$eraseInstall" != "1" ]; then
     eraseInstall=0
 fi
 
@@ -264,7 +265,11 @@ validate_power_status() {
         /bin/echo "Power Check: OK - AC Power Detected"
     else
         if [[ "$acPowerWaitTimer" -gt 0 ]]; then
-            /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "Waiting for AC Power Connection" -icon "$warnIcon" -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
+            /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+                -windowType utility \
+                -title "Waiting for AC Power Connection" \
+                -icon "$warnIcon" \
+                -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
             wait_for_ac_power "$!"
         else
             sysRequirementErrors+=("Is connected to AC power")
@@ -351,12 +356,16 @@ validate_free_space "$installerVersionNumber" "$OSInstaller"
 ## Don't waste the users time, exit here if system requirements are not met
 if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$errorIcon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macOSname. Please ensure your computer meets the following requirements:
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+        -windowType utility \
+        -title "$title" -icon "$errorIcon" \
+        -iconSize 100 -button1 "OK" -defaultButton 1 \
+        -heading "Requirements Not Met" \
+        -description "We were unable to prepare your computer for $macOSname. Please ensure your computer meets the following requirements:
 
 $( /usr/bin/printf '\t• %s\n' "${sysRequirementErrors[@]}" )
 
-If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
-
+If you continue to experience this issue, please contact the IT Support Center."
     cleanExit 1
 fi
 
@@ -406,7 +415,13 @@ done
 if [ "$unsuccessfulDownload" -eq 1 ]; then
     /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
     /bin/echo "Prompting user for error and exiting..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$errorIcon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+        -windowType utility \
+        -title "$title" \
+        -icon "$errorIcon" \
+        -iconSize 100 -button1 "OK" -defaultButton 1 \
+        -heading "Error Downloading $macOSname" \
+        -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center."
     cleanExit 0
 fi
 
