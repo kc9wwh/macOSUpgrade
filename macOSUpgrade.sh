@@ -195,7 +195,11 @@ caffeinatePID=""
 declare -a startosinstallOptions=()
 
 ## Determine binary name
-binaryNameForOSInstallerSetup=$([ "$installerVersionNumber" -ge 101100 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
+if [ "$installerVersionNumber" -ge 101100 ]; then
+ binaryNameForOSInstallerSetup="osinstallersetupd"
+else
+ binaryNameForOSInstallerSetup="osinstallersetupplaind"
+fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
@@ -252,10 +256,19 @@ downloadInstaller() {
     jamfHUDPID=$!
 
     ## Run policy to cache installer
-    /usr/local/jamf/bin/jamf policy -event "$download_trigger"
+    if /usr/local/jamf/bin/jamf policy -event "$download_trigger" ; then
+        jamfPolicyResult=ok
+    else
+        jamfPolicyResult=ng
+    fi
 
     ## Kill Jamf Helper HUD post download
     kill_process "$jamfHUDPID"
+
+    if [ "$jamfPolicyResult" = "ng" ]; then
+        /bin/echo "Abort due to failed jamf policy -event $download_trigger"
+        cleanExit 1
+    fi
 }
 
 validate_power_status() {
@@ -312,7 +325,7 @@ verifyChecksum() {
     if [ "$osChecksum" = "$installerDMGChecksum" ]; then
         /bin/echo "Valid"
     else
-        /bin/echo "Not Valid"
+        /bin/echo "not Valid"
     fi
 }
 
@@ -371,50 +384,64 @@ fi
 
 ## Check for existing OS installer
 loopCount=0
-while [ "$loopCount" -lt 3 ]; do
+unsuccessfulDownload=1
+maxTrialCount=3
+
+while [ "$loopCount" -lt "$maxTrialCount" ]; do
     if [ -d "$OSInstaller" ]; then
-        if [ "$doCheckDMGchecksum" = yes ]; then
-            /bin/echo "$OSInstaller found, checking version."
+        if [ -f "$installerPlist" ]; then
+            if [ "$installerVersionNumber" -lt 110000 ]; then
+                currentInstallerVersion=$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "$installerPlist")
+            else
+                currentInstallerVersion=$(/usr/libexec/PlistBuddy -c "print DTPlatformVersion" "$installerPlist")
+            fi
         else
-            /bin/echo "$OSInstaller found. Do not checking version."
-            break
-        fi
-
-        if [ "$installerVersionNumber" -lt 1100 ]; then
-            currentInstallerVersion=$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "$installerPlist")
-        else
-            currentInstallerVersion=$(/usr/libexec/PlistBuddy -c "print DTPlatformVersion" "$installerPlist")
-        fi
-        /bin/echo "Found macOS installer for version $currentInstallerVersion."
-
-        if [ "$currentInstallerVersion" = "$installerVersion" ]; then
-            /bin/echo "Installer found, version matches. Verifying checksum..."
-        else
-            ## Delete old version.
-            /bin/echo "Installer found, but it's old one."
-            downloadInstaller
             ((loopCount++))
+            /bin/echo "Installer check: Not found $installerPlist."
+            /bin/echo "Try to download installer.app. ($loopCount / $maxTrialCount )"
+            downloadInstaller
             continue
         fi
 
-        checkResult="$( verifyChecksum )"
-        echo "Check sum: $checkResult"
-        if [ "$checkResult" = "Valid" ]; then
-            unsuccessfulDownload=0
-            break
+        if [ "$currentInstallerVersion" = "$installerVersion" ]; then
+            /bin/echo "Installer check: Target version is ok ($currentInstallerVersion)."
         else
+            ((loopCount++))
+            /bin/echo "Installer check: Expected: $installerVersion Actual: $currentInstallerVersion"
+            /bin/echo "Try to download installer.app. ($loopCount / $maxTrialCount )"
             downloadInstaller
+            continue
         fi
+
+        if [ "$doCheckDMGchecksum" = yes ]; then
+            checkResult="$( verifyChecksum )"
+            if [ "$checkResult" = "Valid" ]; then
+                /bin/echo "Installer check: DMG file is $checkResult"
+                unsuccessfulDownload=0
+            else
+                ((loopCount++))
+                /bin/echo "Installer check: DMG file is $checkResult"
+                /bin/echo "Try to download installer.app. ($loopCount / $maxTrialCount )"
+                downloadInstaller
+                continue
+            fi
+        else
+            /bin/echo "Installer check: DMG file check: Skipped."
+            unsuccessfulDownload=0
+        fi
+
+        /bin/echo "Installer check: PASSED"
+        break
     else
+        /bin/echo "Installer check: Not found installer.app."
+        ((loopCount++))
+        /bin/echo "Try to download installer.app. ($loopCount / $maxTrialCount )"
         downloadInstaller
     fi
-    unsuccessfulDownload=1
-    ((loopCount++))
 done
 
 if [ "$unsuccessfulDownload" -eq 1 ]; then
-    /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
-    /bin/echo "Prompting user for error and exiting..."
+    /bin/echo "macOS Installer.app downloaded $maxTrialCount Times. But installer check failed."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
         -windowType utility \
         -title "$title" \
@@ -539,12 +566,21 @@ fi
 ## Launch jamfHelper
 jamfHelperPID=""
 if [ "$userDialog" -eq 0 ]; then
-    /bin/echo "Launching jamfHelper as FullScreen..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
+    /bin/echo "Launching jamfHelper as FullScreen."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+        -windowType fs -title "" \
+        -icon "$icon" \
+        -heading "$heading" \
+        -description "$description" &
     jamfHelperPID=$!
 else
-    /bin/echo "Launching jamfHelper as Utility Window..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
+    /bin/echo "Launching jamfHelper as Utility Window."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+        -windowType utility -title "$title" \
+        -icon "$icon" \
+        -heading "$heading" \
+        -iconSize 100 \
+        -description "$description" &
     jamfHelperPID=$!
 fi
 
@@ -570,7 +606,8 @@ if [ "$installerVersionNumber" -lt 101400 ]; then
 fi
 
 if [ "$installerVersionNumber" -gt 101400 ]; then
-    # The --forcequitapps option will force Self Service to quit, which prevents Self Service from cancelling a restart
+    # The --forcequitapps option will force Self Service to quit,
+    # which prevents Self Service from cancelling a restart
     startosinstallOptions+=("--forcequitapps")
 fi
 
