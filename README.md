@@ -55,6 +55,8 @@ Otherwise you can get a package of the installer with helper script as shown bel
 ./helper-tools/prepare-jamf-policy.sh /Applications/Install\ macOS\ Big\ Sur.app
 ```
 
+You will get some parameters for policy for Jamf pro, path to the installer app, the installer dmg file's check sum and the version to upgrade.
+
 
 **Example of Required Self Service Description**
 
