@@ -48,6 +48,16 @@
 # Written by: Joshua Roskos | Jamf
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# APS Updates added 11/30/2020
+#
+# Updated Installer installerVersion variables to account for Big Sur macOS 11.xx.yy
+#
+# Added "Show Log File" Parameter to open /var/log/startosinstall.log – This will allow the 
+# current user to monitor the progress of the macOS installer download.
+# This feature is ideal to use with the "stub" "Install macOS XX.app"
+#
+# Updated $description and $dldescription to be more generic.
+#
 # APS Updates added 11/28/2019
 #
 # Updated "validate_free_space" to work with Catalina – freeSpace
@@ -76,8 +86,11 @@ OSInstaller="$4"
 ## Example Command: /usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "/Applications/Install macOS High Sierra.app/Contents/SharedSupport/InstallInfo.plist"
 ## Example: 10.12.5
 installerVersion="$5"
-installerVersionMajor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{print $2}' )
-installerVersionMinor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{print $3}' )
+installerVersion_Full_Integer=$(/bin/echo "$installerVersion" | /usr/bin/awk -F. '{for(i=1; i<=NF; i++) {printf("%02d",$i)}}')
+installerVersion_Major_Integer=$(/bin/echo "$installerVersion" | /usr/bin/cut -d. -f 1,2 | /usr/bin/awk -F. '{for(i=1; i<=NF; i++) {printf("%02d",$i)}}')
+/bin/echo "installerVersion $installerVersion"
+/bin/echo "installerVersion_Full_Integer $installerVersion_Full_Integer"
+/bin/echo "installerVersion_Major_Integer $installerVersion_Major_Integer"
 
 ## Custom Trigger used for download – Use Parameter 6 in the JSS, or specify here.
 ## Parameter Label: Download Policy Trigger
@@ -111,7 +124,7 @@ unsuccessfulDownload=0
 eraseInstall="$8"
 if [ "$eraseInstall" != "1" ]; then eraseInstall=0 ; fi
 # macOS Installer 10.13.3 or ealier set 0 to it.
-if [ "$installerVersionMajor${installerVersionMinor:=0}" -lt 134 ]; then
+if [ "$installerVersion_Full_Integer" -lt 101303 ]; then
     eraseInstall=0
 fi
 
@@ -123,13 +136,30 @@ userDialog="$9"
 if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 
 # Control for auth reboot execution.
-if [ "$installerVersionMajor" -ge 14 ]; then
+if [ "$installerVersion_Major_Integer" -ge 1014 ]; then
     # Installer of macOS 10.14 or later set cancel to auth reboot.
     cancelFVAuthReboot=1
 else
     # Installer of macOS 10.13 or earlier try to do auth reboot.
     cancelFVAuthReboot=0
 fi
+
+## Enter yes to open /var/log/startosinstall.log 
+## Use Parameter 10 in the JSS.
+## Parameter Label: Show Log File (yes or no)
+ShowLogFile="${10}"
+if [ "$ShowLogFile" != "yes" ]; then ShowLogFile="no" ; fi
+
+
+# Control for auth reboot execution.
+if [ "$installerVersion_Major_Integer" -ge 1014 ]; then
+    # Installer of macOS 10.14 or later set cancel to auth reboot.
+    cancelFVAuthReboot=1
+else
+    # Installer of macOS 10.13 or earlier try to do auth reboot.
+    cancelFVAuthReboot=0
+fi
+
 
 ## Title of OS
 macOSname=$(/bin/echo "$OSInstaller" | /usr/bin/sed -E 's/(.+)?Install(.+)\.app\/?/\2/' | /usr/bin/xargs)
@@ -141,11 +171,11 @@ title="$macOSname Upgrade"
 heading="Please wait as we prepare your computer for $macOSname..."
 
 ## Title to be used for userDialog
-description="Your computer will reboot in 5-10 minutes and begin the upgrade.
-This process will take approximately 30-40 minutes."
+description="Your computer will reboot after downloading the macOS installer.
+The entire download and install process may take up to an hour."
 
 ## Description to be used prior to downloading the OS installer
-dldescription="We need to download $macOSname to your computer, this will \
+dldescription="We need to download $macOSname to your computer, this may \
 take several minutes."
 
 ## Jamf Helper HUD Position if macOS Installer needs to be downloaded
@@ -189,7 +219,7 @@ caffeinatePID=""
 declare -a startosinstallOptions=()
 
 ## Determine binary name
-binaryNameForOSInstallerSetup=$([ "$installerVersionMajor" -ge 11 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
+binaryNameForOSInstallerSetup=$([ "$installerVersion_Major_Integer" -ge 1011 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
@@ -271,7 +301,7 @@ validate_free_space() {
     fi
 
     ## Check if free space > 15GB (install 10.13) or 20GB (install 10.14+)
-    requiredDiskSpaceSizeGB=$([ "$installerMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
+    requiredDiskSpaceSizeGB=$([ "$installerMajor" -ge 1014 ] && /bin/echo "20" || /bin/echo "15")
     if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 * 1000 * 1000 )) ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
     else
@@ -336,7 +366,7 @@ fvStatus=$( /usr/bin/fdesetup status | /usr/bin/head -1 )
 
 ## Run system requirement checks
 validate_power_status
-validate_free_space "$installerVersionMajor" "$OSInstaller"
+validate_free_space "$installerVersion_Major_Integer" "$OSInstaller"
 
 ## Don't waste the users time, exit here if system requirements are not met
 if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
@@ -525,12 +555,12 @@ startosinstallOptions+=(
 )
 
 ## Set version specific startosinstall options
-if [ "$installerVersionMajor" -lt 14 ]; then
+if [ "$installerVersion_Major_Integer" -lt 1014 ]; then
     # This variable may have space. Therefore, escape value with duble quotation
     startosinstallOptions+=("--applicationpath \"$OSInstaller\"")
 fi
 
-if [ "$installerVersionMajor" -gt 14 ]; then
+if [ "$installerVersion_Major_Integer" -gt 1014 ]; then
     # The --forcequitapps option will force Self Service to quit, which prevents Self Service from cancelling a restart
     startosinstallOptions+=("--forcequitapps")
 fi
@@ -541,11 +571,18 @@ if [ "$eraseInstall" -eq 1 ]; then
     /bin/echo "Script is configured for Erase and Install of macOS."
 fi
 
+## Clear and open osinstallLogfile
+/bin/rm -f "${osinstallLogfile}"
+
 ## Begin Upgrade
 startosinstallCommand="\"$OSInstaller/Contents/Resources/startosinstall\" ${startosinstallOptions[*]} >> $osinstallLogfile 2>&1 &"
 /bin/echo "Running a command as '$startosinstallCommand'..."
 eval "$startosinstallCommand"
 
 /bin/sleep 3
+
+if [ "$ShowLogFile" = "yes" ]; then 
+	/usr/bin/open "${osinstallLogfile}"
+fi
 
 exit 0
