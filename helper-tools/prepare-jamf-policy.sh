@@ -119,11 +119,10 @@ else
     dist_dmg="${HOME}/Downloads/$(basename "$OSInstaller" ).${osversion}.dmg"
     sizeOfInstaller="$( /usr/bin/du -sm "$OSInstaller" | awk '{print $1}' )"
     volumename="macOSInstaller"
-    extra_size=256
+    extra_size=512
     filesystem=APFS
 
     if [ "$( /usr/bin/sw_vers -productVersion | awk -F. '{ print ($1 * 10 ** 2 +  $2 )}' )" -lt 1015 ]; then
-        extra_size=512
         filesystem='JHFS+'
     fi
 
@@ -131,8 +130,14 @@ else
     devfile="$( /usr/bin/hdiutil attach -readwrite -nobrowse "$temp_dmg" | awk '$NF == "GUID_partition_scheme" {print $1}' )"
 
     /bin/mkdir "/Volumes/${volumename}/Applications"
-    /bin/cp -a "${OSInstaller%/}" "/Volumes/${volumename}/Applications"
-    /usr/bin/hdiutil detach "$devfile" > /dev/null
+    if /bin/cp -a "${OSInstaller%/}" "/Volumes/${volumename}/Applications" ; then
+        /usr/bin/hdiutil detach "$devfile" > /dev/null
+    else
+        echo "=== DEBUG ==="
+        /bin/df -lH
+        echo "temp_dmg: $temp_dmg"
+        exit 1
+    fi
 
     if [ -f "$dist_dmg" ]; then
         /bin/mv "${dist_dmg}" "${dist_dmg%.dmg}.previous.$(uuidgen).dmg"
