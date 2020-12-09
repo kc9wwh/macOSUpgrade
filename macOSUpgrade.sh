@@ -2,7 +2,7 @@
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
-# Copyright (c) 2019 Jamf.  All rights reserved.
+# Copyright (c) 2020 Jamf.  All rights reserved.
 #
 #       Redistribution and use in source and binary forms, with or without
 #       modification, are permitted provided that the following conditions are met:
@@ -331,8 +331,8 @@ validate_free_space() {
         freeSpace=$((freeSpace + installerSizeBytes))
     fi
 
-    ## Check if free space > 15GB (install 10.13) or 20GB (install 10.14+)
-    requiredDiskSpaceSizeGB=$([ "$installerVersion" -ge 1014 ] && /bin/echo "20" || /bin/echo "15")
+    ## Check if free space > 20GB (install 10.12+) or 48GB (install 11.00)
+    requiredDiskSpaceSizeGB=$([ "$installerVersion_Major_Integer" -ge 1100 ] && /bin/echo "48" || /bin/echo "20")   	
     if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 ** 3 )) ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
     else
