@@ -48,29 +48,7 @@
 # Written by: Joshua Roskos | Jamf
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# APS Updates added 11/30/2020
-#
-# Updated Installer installerVersion variables to account for Big Sur macOS 11.xx.yy
-#
-# Added "Show Log File" Parameter to open /var/log/startosinstall.log – This will allow the
-# current user to monitor the progress of the macOS installer download.
-# This feature is ideal to use with the "stub" "Install macOS XX.app"
-#
-# Updated $description and $dldescription to be more generic.
-#
-# APS Updates added 11/28/2019
-#
-# Updated "validate_free_space" to work with Catalina – freeSpace
-# Added "Print :APFSContainerFree"
-# /usr/libexec/PlistBuddy -c "Print :APFSContainerFree" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :FreeSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :AvailableSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null
-#
-# Updated loopCout to work with Stub/Lite installer – Stub/Lite installer does not specify a macOS version.
-# Check to see if the installer version matches, or if the installer does not have InstallInfo.plist.
-# if [ "$currentInstallerVersion" = "$installerVersion" ] || [[ ! -e "$OSInstaller/Contents/SharedSupport/InstallInfo.plist" ]]; then
-#
-# Updated variable "currentUser"
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # USER VARIABLES
@@ -88,6 +66,8 @@ OSInstaller="$( echo "$4" | /usr/bin/xargs )"
 installerVersion="$5"
 installerVersion_Full_Integer=$(/bin/echo "$installerVersion" | /usr/bin/awk -F. '{for(i=1; i<=NF; i++) {printf("%02d",$i)}}')
 installerVersion_Major_Integer=$(/bin/echo "$installerVersion" | /usr/bin/cut -d. -f 1,2 | /usr/bin/awk -F. '{for(i=1; i<=NF; i++) {printf("%02d",$i)}}')
+
+[ "${#installerVersion_Full_Integer}" -lt 6 ] && installerVersion_Full_Integer="$installerVersion_Full_Integer"00
 
 /bin/echo "installerVersion $installerVersion"
 /bin/echo "installerVersion_Full_Integer $installerVersion_Full_Integer"
