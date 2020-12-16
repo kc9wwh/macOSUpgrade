@@ -64,10 +64,8 @@ OSInstaller="$( echo "$4" | /usr/bin/xargs )"
 ## Example Command: /usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "/Applications/Install macOS High Sierra.app/Contents/SharedSupport/InstallInfo.plist"
 ## Example: 10.12.5
 installerVersion="$5"
-installerVersion_Full_Integer=$(/bin/echo "$installerVersion" | /usr/bin/awk -F. '{for(i=1; i<=NF; i++) {printf("%02d",$i)}}')
+installerVersion_Full_Integer="$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{ print ($1 * 10 ** 4 + $2 * 10 ** 2 + $3 )}' )"
 installerVersion_Major_Integer=$(/bin/echo "$installerVersion" | /usr/bin/cut -d. -f 1,2 | /usr/bin/awk -F. '{for(i=1; i<=NF; i++) {printf("%02d",$i)}}')
-
-[ "${#installerVersion_Full_Integer}" -lt 6 ] && installerVersion_Full_Integer="$installerVersion_Full_Integer"00
 
 /bin/echo "installerVersion $installerVersion"
 /bin/echo "installerVersion_Full_Integer $installerVersion_Full_Integer"
