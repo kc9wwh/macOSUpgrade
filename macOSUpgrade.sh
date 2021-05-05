@@ -53,7 +53,7 @@
 # Updated "validate_free_space" to work with Catalina – freeSpace
 # Added "Print :APFSContainerFree"
 # /usr/libexec/PlistBuddy -c "Print :APFSContainerFree" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :FreeSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :AvailableSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null
-# 
+#
 # Updated loopCout to work with Stub/Lite installer – Stub/Lite installer does not specify a macOS version.
 # Check to see if the installer version matches, or if the installer does not have InstallInfo.plist.
 # if [ "$currentInstallerVersion" = "$installerVersion" ] || [[ ! -e "$OSInstaller/Contents/SharedSupport/InstallInfo.plist" ]]; then
@@ -61,6 +61,41 @@
 # Updated variable "currentUser"
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# FUNCTIONS
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+function get_install_os_info(){
+    local dmg_file tmpfile osversion osbuild info_file devfile
+
+    dmg_file="$1"
+    if [ ! -f "$dmg_file" ]; then
+        echo "Not found: $dmg_file"
+        exit 1
+    fi
+    tmpfile="$( /usr/bin/mktemp )"
+
+    /usr/bin/hdiutil attach -mountrandom /Volumes -noverify -readonly -nobrowse "$dmg_file" > "$tmpfile"
+    devfile="$( /usr/bin/awk '$NF == "GUID_partition_scheme" {print $1}' "$tmpfile" )"
+    if [ -z "$devfile" ]; then
+        echo "failed to mount: $dmg_file"
+        rm -rf "$tmpfile"
+        exit 1
+    fi
+    mountpoint="$( /usr/bin/awk '$2 == "Apple_HFS" {print $3}' "$tmpfile" )"
+    if [ -z "$mountpoint" ]; then
+        echo "something changed. failed to get mount point"
+        rm -rf "$tmpfile"
+        exit 1
+    fi
+
+    info_file="${mountpoint}/com_apple_MobileAsset_MacSoftwareUpdate/com_apple_MobileAsset_MacSoftwareUpdate.xml"
+    osversion="$( /usr/libexec/PlistBuddy -c "print Assets:0:OSVersion" "$info_file" )"
+
+    rm -rf "$tmpfile"
+    /usr/bin/hdiutil detach "$devfile" > /dev/null 2>&1
+    echo "${osversion}
+}
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # USER VARIABLES
@@ -406,7 +441,7 @@ do
 	echo "\$(date "+%a %h %d %H:%M:%S"): Waiting for /var/db/.AppleUpgrade to disappear." >> /usr/local/jamfps/firstbootupgrade.log
     sleep 60
 done
-    
+
 ## Wait until the upgrade process completes
 INSTALLER_PROGRESS_PROCESS=\$(pgrep -l "Installer Progress")
 until [ "\$INSTALLER_PROGRESS_PROCESS" = "" ];
