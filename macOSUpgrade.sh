@@ -2,7 +2,7 @@
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
-# Copyright (c) 2019 Jamf.  All rights reserved.
+# Copyright (c) 2021 Jamf.  All rights reserved.
 #
 #       Redistribution and use in source and binary forms, with or without
 #       modification, are permitted provided that the following conditions are met:
@@ -48,54 +48,6 @@
 # Written by: Joshua Roskos | Jamf
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# APS Updates added 11/28/2019
-#
-# Updated "validate_free_space" to work with Catalina – freeSpace
-# Added "Print :APFSContainerFree"
-# /usr/libexec/PlistBuddy -c "Print :APFSContainerFree" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :FreeSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :AvailableSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null
-#
-# Updated loopCout to work with Stub/Lite installer – Stub/Lite installer does not specify a macOS version.
-# Check to see if the installer version matches, or if the installer does not have InstallInfo.plist.
-# if [ "$currentInstallerVersion" = "$installerVersion" ] || [[ ! -e "$OSInstaller/Contents/SharedSupport/InstallInfo.plist" ]]; then
-#
-# Updated variable "currentUser"
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# FUNCTIONS
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-function get_install_os_info(){
-    local dmg_file tmpfile osversion osbuild info_file devfile
-
-    dmg_file="$1"
-    if [ ! -f "$dmg_file" ]; then
-        echo "Not found: $dmg_file"
-        exit 1
-    fi
-    tmpfile="$( /usr/bin/mktemp )"
-
-    /usr/bin/hdiutil attach -mountrandom /Volumes -noverify -readonly -nobrowse "$dmg_file" > "$tmpfile"
-    devfile="$( /usr/bin/awk '$NF == "GUID_partition_scheme" {print $1}' "$tmpfile" )"
-    if [ -z "$devfile" ]; then
-        echo "failed to mount: $dmg_file"
-        rm -rf "$tmpfile"
-        exit 1
-    fi
-    mountpoint="$( /usr/bin/awk '$2 == "Apple_HFS" {print $3}' "$tmpfile" )"
-    if [ -z "$mountpoint" ]; then
-        echo "something changed. failed to get mount point"
-        rm -rf "$tmpfile"
-        exit 1
-    fi
-
-    info_file="${mountpoint}/com_apple_MobileAsset_MacSoftwareUpdate/com_apple_MobileAsset_MacSoftwareUpdate.xml"
-    osversion="$( /usr/libexec/PlistBuddy -c "print Assets:0:OSVersion" "$info_file" )"
-
-    rm -rf "$tmpfile"
-    /usr/bin/hdiutil detach "$devfile" > /dev/null 2>&1
-    echo "${osversion}
-}
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # USER VARIABLES
@@ -104,15 +56,26 @@ function get_install_os_info(){
 ## Specify path to OS installer – Use Parameter 4 in the JSS, or specify here.
 ## Parameter Label: Path to the macOS installer
 ## Example: /Applications/Install macOS High Sierra.app
-OSInstaller="$4"
+OSInstaller="$( echo "$4" | /usr/bin/xargs )"
 
 ## Version of Installer OS. Use Parameter 5 in the JSS, or specify here.
 ## Parameter Label: Version of macOS
 ## Example Command: /usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "/Applications/Install macOS High Sierra.app/Contents/SharedSupport/InstallInfo.plist"
 ## Example: 10.12.5
 installerVersion="$5"
-installerVersionMajor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{print $2}' )
-installerVersionMinor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{print $3}' )
+installerVersion_Full_Integer="$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{ print ($1 * 10 ** 4 + $2 * 10 ** 2 + $3 )}' )"
+installerVersion_Major_Integer=$(/bin/echo "$installerVersion" | /usr/bin/cut -d. -f 1,2 | /usr/bin/awk -F. '{for(i=1; i<=NF; i++) {printf("%02d",$i)}}')
+
+/bin/echo "installerVersion $installerVersion"
+/bin/echo "installerVersion_Full_Integer $installerVersion_Full_Integer"
+/bin/echo "installerVersion_Major_Integer $installerVersion_Major_Integer"
+
+if [ "$installerVersion_Full_Integer" -lt 110000 ]; then
+    installerDMG="${OSInstaller}/Contents/SharedSupport/InstallESD.dmg"
+    installerPlist="${OSInstaller}/Contents/SharedSupport/InstallInfo.plist"
+else
+    installerDMG="${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg"
+fi
 
 ## Custom Trigger used for download – Use Parameter 6 in the JSS, or specify here.
 ## Parameter Label: Download Policy Trigger
@@ -121,21 +84,20 @@ installerVersionMinor=$( /bin/echo "$installerVersion" | /usr/bin/awk -F. '{prin
 ## to relevant computers and/or users, or else the custom trigger will
 ## not be picked up. Use a separate policy for the script itself.
 ## Example trigger name: download-sierra-install
-download_trigger="$6"
+download_trigger="$( echo "$6" | /usr/bin/xargs )"
 
-## MD5 Checksum of InstallESD.dmg – Use Parameter 7 in the JSS.
+## MD5 Checksum of Installer dmg file – Use Parameter 7 in the JSS.
 ## Parameter Label: installESD Checksum (optional)
 ## This variable is OPTIONAL
 ## Leave the variable BLANK if you do NOT want to verify the checksum (DEFAULT)
 ## Example Command: /sbin/md5 /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
 ## Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
-installESDChecksum="$7"
-
-## Valid Checksum?  O (Default) for false, 1 for true.
-validChecksum=0
-
-## Unsuccessful Download?  0 (Default) for false, 1 for true.
-unsuccessfulDownload=0
+installerDMGChecksum="$( echo "$7" | /usr/bin/xargs )"
+if [ -n "$installerDMGChecksum" ]; then
+    doCheckDMGchecksum=yes
+else
+    doCheckDMGchecksum=no
+fi
 
 ## Erase & Install macOS (Factory Defaults)
 ## Requires macOS Installer 10.13.4 or later
@@ -146,7 +108,7 @@ unsuccessfulDownload=0
 eraseInstall="$8"
 if [ "$eraseInstall" != "1" ]; then eraseInstall=0 ; fi
 # macOS Installer 10.13.3 or ealier set 0 to it.
-if [ "$installerVersionMajor${installerVersionMinor:=0}" -lt 134 ]; then
+if [ "$installerVersion_Full_Integer" -lt 101304 ]; then
     eraseInstall=0
 fi
 
@@ -157,8 +119,14 @@ fi
 userDialog="$9"
 if [ "$userDialog" != "1" ]; then userDialog=0 ; fi
 
+## Enter yes to open /var/log/startosinstall.log
+## Use Parameter 10 in the JSS.
+## Parameter Label: Show Log File (yes or no)
+ShowLogFile=$( /bin/echo "${10}" | /usr/bin/tr "[:upper:]" "[:lower:]" | /usr/bin/xargs)
+if [ "$ShowLogFile" != "yes" ]; then ShowLogFile="no" ; fi
+
 # Control for auth reboot execution.
-if [ "$installerVersionMajor" -ge 14 ]; then
+if [ "$installerVersion_Major_Integer" -ge 1014 ]; then
     # Installer of macOS 10.14 or later set cancel to auth reboot.
     cancelFVAuthReboot=1
 else
@@ -176,11 +144,11 @@ title="$macOSname Upgrade"
 heading="Please wait as we prepare your computer for $macOSname..."
 
 ## Title to be used for userDialog
-description="Your computer will reboot in 5-10 minutes and begin the upgrade.
-This process will take approximately 30-40 minutes."
+description="Your computer will reboot after downloading the macOS installer.
+The entire download and install process may take up to an hour."
 
 ## Description to be used prior to downloading the OS installer
-dldescription="We need to download $macOSname to your computer, this will \
+dldescription="We need to download $macOSname to your computer, this may \
 take several minutes."
 
 ## Jamf Helper HUD Position if macOS Installer needs to be downloaded
@@ -224,11 +192,46 @@ caffeinatePID=""
 declare -a startosinstallOptions=()
 
 ## Determine binary name
-binaryNameForOSInstallerSetup=$([ "$installerVersionMajor" -ge 11 ] && /bin/echo "osinstallersetupd" || /bin/echo "osinstallersetupplaind")
+if [ "$installerVersion_Major_Integer" -ge 1011 ]; then
+ binaryNameForOSInstallerSetup="osinstallersetupd"
+else
+ binaryNameForOSInstallerSetup="osinstallersetupplaind"
+fi
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+function get_install_os_info(){
+    local dmg_file tmpfile osversion osbuild info_file devfile
+
+    dmg_file="$1"
+    if [ ! -f "$dmg_file" ]; then
+        echo "Not found: $dmg_file"
+        exit 1
+    fi
+    tmpfile="$( /usr/bin/mktemp )"
+
+    /usr/bin/hdiutil attach -mountrandom /Volumes -noverify -readonly -nobrowse "$dmg_file" > "$tmpfile"
+    devfile="$( /usr/bin/awk '$NF == "GUID_partition_scheme" {print $1}' "$tmpfile" )"
+    if [ -z "$devfile" ]; then
+        echo "failed to mount: $dmg_file"
+        rm -rf "$tmpfile"
+        exit 1
+    fi
+    mountpoint="$( /usr/bin/awk '$2 == "Apple_HFS" {print $3}' "$tmpfile" )"
+    if [ -z "$mountpoint" ]; then
+        echo "something changed. failed to get mount point"
+        rm -rf "$tmpfile"
+        exit 1
+    fi
+
+    info_file="${mountpoint}/com_apple_MobileAsset_MacSoftwareUpdate/com_apple_MobileAsset_MacSoftwareUpdate.xml"
+    osversion="$( /usr/libexec/PlistBuddy -c "print Assets:0:OSVersion" "$info_file" )"
+
+    rm -rf "$tmpfile"
+    /usr/bin/hdiutil detach "$devfile" > /dev/null 2>&1
+    echo "${osversion}
+}
 
 kill_process() {
     processPID="$1"
@@ -258,16 +261,42 @@ wait_for_ac_power() {
 }
 
 downloadInstaller() {
+    if [ ! -x /usr/local/jamf/bin/jamf ]; then
+        echo "Not found: /usr/local/jamf/bin/jamf"
+        return
+    fi
+
+    /bin/rm -rf "${OSInstaller:-/tmp/dummy.$$}"
+
     /bin/echo "Downloading macOS Installer..."
     /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
-        -windowType hud -windowPosition $dlPosition -title "$title" -alignHeading center -alignDescription left -description "$dldescription" \
-        -lockHUD -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" -iconSize 100 &
+        -windowType hud \
+        -windowPosition $dlPosition \
+        -title "$title" \
+        -alignHeading center \
+        -alignDescription left \
+        -description "$dldescription" \
+        -lockHUD \
+        -icon "/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/SidebarDownloadsFolder.icns" \
+        -iconSize 100 &
+
     ## Capture PID for Jamf Helper HUD
     jamfHUDPID=$!
+
     ## Run policy to cache installer
-    /usr/local/jamf/bin/jamf policy -event "$download_trigger"
+    if /usr/local/jamf/bin/jamf policy -event "$download_trigger" ; then
+        jamfPolicyResult=ok
+    else
+        jamfPolicyResult=ng
+    fi
+
     ## Kill Jamf Helper HUD post download
     kill_process "$jamfHUDPID"
+
+    if [ "$jamfPolicyResult" = "ng" ]; then
+        /bin/echo "Abort due to failed jamf policy -event $download_trigger"
+        cleanExit 1
+    fi
 }
 
 validate_power_status() {
@@ -277,7 +306,11 @@ validate_power_status() {
         /bin/echo "Power Check: OK - AC Power Detected"
     else
         if [[ "$acPowerWaitTimer" -gt 0 ]]; then
-            /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "Waiting for AC Power Connection" -icon "$warnIcon" -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
+            /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+                -windowType utility \
+                -title "Waiting for AC Power Connection" \
+                -icon "$warnIcon" \
+                -description "Please connect your computer to power using an AC power adapter. This process will continue once AC power is detected." &
             wait_for_ac_power "$!"
         else
             sysRequirementErrors+=("Is connected to AC power")
@@ -287,9 +320,9 @@ validate_power_status() {
 }
 
 validate_free_space() {
-    local installerMajor diskInfoPlist freeSpace requiredDiskSpaceSizeGB installerPath installerSizeBytes
+    local installerVersion diskInfoPlist freeSpace requiredDiskSpaceSizeGB installerPath installerSizeBytes
 
-    installerMajor="$1"
+    installerVersion="$1"
     installerPath="$2"
 
     diskInfoPlist=$(/usr/sbin/diskutil info -plist /)
@@ -305,9 +338,9 @@ validate_free_space() {
         freeSpace=$((freeSpace + installerSizeBytes))
     fi
 
-    ## Check if free space > 15GB (install 10.13) or 20GB (install 10.14+)
-    requiredDiskSpaceSizeGB=$([ "$installerMajor" -ge 14 ] && /bin/echo "20" || /bin/echo "15")
-    if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 * 1000 * 1000 )) ]]; then
+    ## Check if free space > 20GB (install 10.12+) or 48GB (install 11.00)
+    requiredDiskSpaceSizeGB=$([ "$installerVersion_Major_Integer" -ge 1100 ] && /bin/echo "48" || /bin/echo "20")
+    if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 ** 3 )) ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
     else
         sysRequirementErrors+=("Has at least ${requiredDiskSpaceSizeGB}GB of Free Space")
@@ -316,23 +349,11 @@ validate_free_space() {
 }
 
 verifyChecksum() {
-    if [ -n "$installESDChecksum" ]; then
-        osChecksum=$( /sbin/md5 -q "$OSInstaller/Contents/SharedSupport/InstallESD.dmg" )
-        if [ "$osChecksum" = "$installESDChecksum" ]; then
-            /bin/echo "Checksum: Valid"
-            validChecksum=1
-            return
-        else
-            /bin/echo "Checksum: Not Valid"
-            /bin/echo "Beginning new download of installer"
-            /bin/rm -rf "$OSInstaller"
-            /bin/sleep 2
-            downloadInstaller
-        fi
+    osChecksum=$( /sbin/md5 -q "$installerDMG" )
+    if [ "$osChecksum" = "$installerDMGChecksum" ]; then
+        /bin/echo "Valid"
     else
-        ## Checksum not specified as script argument, assume true
-        validChecksum=1
-        return
+        /bin/echo "not Valid"
     fi
 }
 
@@ -371,53 +392,94 @@ fvStatus=$( /usr/bin/fdesetup status | /usr/bin/head -1 )
 
 ## Run system requirement checks
 validate_power_status
-validate_free_space "$installerVersionMajor" "$OSInstaller"
+validate_free_space "$installerVersion_Major_Integer" "$OSInstaller"
 
 ## Don't waste the users time, exit here if system requirements are not met
 if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
     /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$errorIcon" -heading "Requirements Not Met" -description "We were unable to prepare your computer for $macOSname. Please ensure your computer meets the following requirements:
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+        -windowType utility \
+        -title "$title" -icon "$errorIcon" \
+        -iconSize 100 -button1 "OK" -defaultButton 1 \
+        -heading "Requirements Not Met" \
+        -description "We were unable to prepare your computer for $macOSname. Please ensure your computer meets the following requirements:
 
 $( /usr/bin/printf '\t• %s\n' "${sysRequirementErrors[@]}" )
 
-If you continue to experience this issue, please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
-
+If you continue to experience this issue, please contact the IT Support Center."
     cleanExit 1
 fi
 
 ## Check for existing OS installer
 loopCount=0
-while [ "$loopCount" -lt 3 ]; do
-    if [ -e "$OSInstaller" ]; then
-        /bin/echo "$OSInstaller found, checking version."
-        currentInstallerVersion=$(/usr/libexec/PlistBuddy -c 'Print :"System Image Info":version' "$OSInstaller/Contents/SharedSupport/InstallInfo.plist")
-        /bin/echo "Found macOS installer for version $currentInstallerVersion."
-        ## Check to see if the installer version matches, or if the installer does not have InstallInfo.plist.
-        if [ "$currentInstallerVersion" = "$installerVersion" ] || [[ ! -e "$OSInstaller/Contents/SharedSupport/InstallInfo.plist" ]]; then
-            /bin/echo "Installer found, version matches. Verifying checksum..."
-            verifyChecksum
+unsuccessfulDownload=1
+maxTrialCount=3
+
+while [ "$loopCount" -lt "$maxTrialCount" ]; do
+    if [ -d "$OSInstaller" ]; then
+        if [ "$installerVersion_Full_Integer" -lt 110000 ]; then
+            if [ -f "$installerPlist" ]; then
+                currentInstallerVersion=$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "$installerPlist")
+            else
+                /bin/echo "Installer check: Not found $installerPlist."
+            fi
         else
-            ## Delete old version.
-            /bin/echo "Installer found, but old. Deleting..."
-            /bin/rm -rf "$OSInstaller"
-            /bin/sleep 2
+            currentInstallerVersion=$(get_install_os_info "$installerDMG")
+        fi
+
+        if [ -z "$currentInstallerVersion" ]; then
+            ((loopCount++))
+            /bin/echo "Try to download installer.app. ($loopCount / $maxTrialCount )"
             downloadInstaller
+            continue
         fi
-        if [ "$validChecksum" -eq 1 ]; then
+
+        if [ "$currentInstallerVersion" = "$installerVersion" ]; then
+            /bin/echo "Installer check: Target version is ok ($currentInstallerVersion)."
+        else
+            ((loopCount++))
+            /bin/echo "Installer check: Expected: $installerVersion Actual: $currentInstallerVersion"
+            /bin/echo "Try to download installer.app. ($loopCount / $maxTrialCount )"
+            downloadInstaller
+            continue
+        fi
+
+        if [ "$doCheckDMGchecksum" = yes ]; then
+            checkResult="$( verifyChecksum )"
+            if [ "$checkResult" = "Valid" ]; then
+                /bin/echo "Installer check: DMG file is $checkResult"
+                unsuccessfulDownload=0
+            else
+                ((loopCount++))
+                /bin/echo "Installer check: DMG file is $checkResult"
+                /bin/echo "Try to download installer.app. ($loopCount / $maxTrialCount )"
+                downloadInstaller
+                continue
+            fi
+        else
+            /bin/echo "Installer check: DMG file check: Skipped."
             unsuccessfulDownload=0
-            break
         fi
+
+        /bin/echo "Installer check: PASSED"
+        break
     else
+        /bin/echo "Installer check: Not found installer.app."
+        ((loopCount++))
+        /bin/echo "Try to download installer.app. ($loopCount / $maxTrialCount )"
         downloadInstaller
     fi
-    unsuccessfulDownload=1
-    ((loopCount++))
 done
 
 if [ "$unsuccessfulDownload" -eq 1 ]; then
-    /bin/echo "macOS Installer Downloaded 3 Times - Checksum is Not Valid"
-    /bin/echo "Prompting user for error and exiting..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$errorIcon" -heading "Error Downloading $macOSname" -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center." -iconSize 100 -button1 "OK" -defaultButton 1
+    /bin/echo "macOS Installer.app downloaded $maxTrialCount Times. But installer check failed."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+        -windowType utility \
+        -title "$title" \
+        -icon "$errorIcon" \
+        -iconSize 100 -button1 "OK" -defaultButton 1 \
+        -heading "Error Downloading $macOSname" \
+        -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center."
     cleanExit 0
 fi
 
@@ -535,12 +597,21 @@ fi
 ## Launch jamfHelper
 jamfHelperPID=""
 if [ "$userDialog" -eq 0 ]; then
-    /bin/echo "Launching jamfHelper as FullScreen..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType fs -title "" -icon "$icon" -heading "$heading" -description "$description" &
+    /bin/echo "Launching jamfHelper as FullScreen."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+        -windowType fs -title "" \
+        -icon "$icon" \
+        -heading "$heading" \
+        -description "$description" &
     jamfHelperPID=$!
 else
-    /bin/echo "Launching jamfHelper as Utility Window..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper -windowType utility -title "$title" -icon "$icon" -heading "$heading" -description "$description" -iconSize 100 &
+    /bin/echo "Launching jamfHelper as Utility Window."
+    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+        -windowType utility -title "$title" \
+        -icon "$icon" \
+        -heading "$heading" \
+        -iconSize 100 \
+        -description "$description" &
     jamfHelperPID=$!
 fi
 
@@ -560,13 +631,14 @@ startosinstallOptions+=(
 )
 
 ## Set version specific startosinstall options
-if [ "$installerVersionMajor" -lt 14 ]; then
+if [ "$installerVersion_Major_Integer" -lt 1014 ]; then
     # This variable may have space. Therefore, escape value with duble quotation
     startosinstallOptions+=("--applicationpath \"$OSInstaller\"")
 fi
 
-if [ "$installerVersionMajor" -gt 14 ]; then
-    # The --forcequitapps option will force Self Service to quit, which prevents Self Service from cancelling a restart
+if [ "$installerVersion_Major_Integer" -gt 1014 ]; then
+    # The --forcequitapps option will force Self Service to quit,
+    # which prevents Self Service from cancelling a restart
     startosinstallOptions+=("--forcequitapps")
 fi
 
@@ -576,11 +648,18 @@ if [ "$eraseInstall" -eq 1 ]; then
     /bin/echo "Script is configured for Erase and Install of macOS."
 fi
 
+## Clear and open osinstallLogfile
+/bin/rm -f "${osinstallLogfile}"
+
 ## Begin Upgrade
 startosinstallCommand="\"$OSInstaller/Contents/Resources/startosinstall\" ${startosinstallOptions[*]} >> $osinstallLogfile 2>&1 &"
 /bin/echo "Running a command as '$startosinstallCommand'..."
 eval "$startosinstallCommand"
 
 /bin/sleep 3
+
+if [ "$ShowLogFile" = "yes" ]; then
+    launchctl asuser "$( id -u "$3" )" /usr/bin/open "${osinstallLogfile}"
+fi
 
 exit 0

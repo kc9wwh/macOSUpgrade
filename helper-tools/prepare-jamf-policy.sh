@@ -98,9 +98,9 @@ elif [ -f "${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg" ]; then
     osinfo="$(get_install_os_info "$dmg")"
     osversion="$(/usr/bin/dirname "$osinfo")"
     osbuild="$(/usr/bin/basename "$osinfo")"
-    output_dir="${HOME}/Downloads/$(basename "${OSInstaller%.app}" ).${osversion}.${osbuild}"
-    installer_archive="${output_dir}/$(basename "${OSInstaller}" ).${osversion}.${osbuild}.dmg"
-    installer_info="${output_dir}/$(basename "${OSInstaller}" ).${osversion}.${osbuild}.txt"
+    output_dir="${HOME}/Downloads/$(basename "${OSInstaller%.app}" ).${osversion}-${osbuild}"
+    installer_archive="${output_dir}/$(basename "${OSInstaller}" ).${osversion}-${osbuild}.dmg"
+    installer_info="${output_dir}/$(basename "${OSInstaller}" ).${osversion}-${osbuild}.txt"
     msg1="Would you need a dmg archive of $( basename "$OSInstaller" )?"
     msg2="Ok, creating dmg archive file of $( basename "$OSInstaller"). Wait few minutes."
 else
@@ -117,7 +117,7 @@ result_file="$( /usr/bin/mktemp )"
 
 =====================================================
 Parameters for JamfPro policy:
-Parameter 4: /Applications/$( basename "$OSInstaller" )
+Parameter 4: /Applications/$( /usr/bin/basename "$OSInstaller" )
 Parameter 5: $osversion
 Parameter 6: (Your download trigger policy)
 Parameter 7: $checksum
@@ -160,8 +160,8 @@ else
     temp_dmg="${workdir}/osinstaller.dmg"
     sizeOfInstaller="$( /usr/bin/du -sm "$OSInstaller" | /usr/bin/awk '{print $1}' )"
     volumename="macOSInstaller"
-    extra_size=256
-    filesystem=APFS
+    extra_size=512
+    filesystem='APFS'
 
     if [ "$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{ print ($1 * 10 ** 2 +  $2 )}' )" -lt 1015 ]; then
         extra_size=512
@@ -172,8 +172,14 @@ else
     devfile="$( /usr/bin/hdiutil attach -readwrite -nobrowse "$temp_dmg" | /usr/bin/awk '$NF == "GUID_partition_scheme" {print $1}' )"
 
     /bin/mkdir "/Volumes/${volumename}/Applications"
-    /bin/cp -a "${OSInstaller%/}" "/Volumes/${volumename}/Applications"
-    /usr/bin/hdiutil detach "$devfile" > /dev/null
+    if /bin/cp -a "${OSInstaller%/}" "/Volumes/${volumename}/Applications" ; then
+        /usr/bin/hdiutil detach "$devfile" > /dev/null
+    else
+        echo "=== DEBUG ==="
+        /bin/df -lH
+        echo "temp_dmg: $temp_dmg"
+        exit 1
+    fi
 
     if [ -f "$installer_archive" ]; then
         /bin/mv "${installer_archive}" "${installer_archive%.pkg}.previous.${uuid}.dmg"
