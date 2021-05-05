@@ -201,8 +201,8 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-function get_install_os_info(){
-    local dmg_file tmpfile osversion osbuild info_file devfile
+get_install_os_info() {
+    local dmg_file tmpfile osversion info_file devfile
 
     dmg_file="$1"
     if [ ! -f "$dmg_file" ]; then
@@ -230,7 +230,7 @@ function get_install_os_info(){
 
     rm -rf "$tmpfile"
     /usr/bin/hdiutil detach "$devfile" > /dev/null 2>&1
-    echo "${osversion}
+    echo "${osversion}"
 }
 
 kill_process() {
