@@ -14,7 +14,7 @@
 #-
 #-   Would you need a package archive of Install macOS Mojave.app? [y/n]: y
 #-   Ok, building package archive file of Install macOS Mojave.app. Wait few minutes.
-#-   Done. See ~/Desktop/Install macOS Mojave.app.10.14
+#-   Done. See ~/Downloads/Install macOS Mojave.app.10.14
 #-   $
 #-
 
