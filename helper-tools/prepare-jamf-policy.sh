@@ -23,7 +23,7 @@ function get_install_os_info(){
 
     dmg_file="$1"
     if [ ! -f "$dmg_file" ]; then
-        echo "Not found: $dmg_file"
+        /bin/echo "Not found: $dmg_file"
         exit 1
     fi
     tmpfile="$( /usr/bin/mktemp )"
@@ -31,14 +31,14 @@ function get_install_os_info(){
     /usr/bin/hdiutil attach -mountrandom /Volumes -noverify -readonly -nobrowse "$dmg_file" > "$tmpfile"
     devfile="$( /usr/bin/awk '$NF == "GUID_partition_scheme" {print $1}' "$tmpfile" )"
     if [ -z "$devfile" ]; then
-        echo "failed to mount: $dmg_file"
-        rm -rf "$tmpfile"
+        /bin/echo "failed to mount: $dmg_file"
+        /bin/rm -rf "$tmpfile"
         exit 1
     fi
     mountpoint="$( /usr/bin/awk '$2 == "Apple_HFS" {print $3}' "$tmpfile" )"
     if [ -z "$mountpoint" ]; then
-        echo "something changed. failed to get mount point"
-        rm -rf "$tmpfile"
+        /bin/echo "something changed. failed to get mount point"
+        /bin/rm -rf "$tmpfile"
         exit 1
     fi
 
@@ -46,9 +46,9 @@ function get_install_os_info(){
     osversion="$( /usr/libexec/PlistBuddy -c "print Assets:0:OSVersion" "$info_file" )"
     osbuild="$( /usr/libexec/PlistBuddy -c "print Assets:0:Build" "$info_file" )"
 
-    rm -rf "$tmpfile"
+    /bin/rm -rf "$tmpfile"
     /usr/bin/hdiutil detach "$devfile" > /dev/null 2>&1
-    echo "${osversion}/${osbuild}"
+    /bin/echo "${osversion}/${osbuild}"
 }
 
 if [ $# -eq 0 ]; then
@@ -59,14 +59,14 @@ fi
 
 OSInstaller="$1"
 if [ ! -d "$OSInstaller" ]; then
-    echo "Not found $OSInstaller !"
+    /bin/echo "Not found $OSInstaller !"
     exit 1
 fi
 
 if [ ! -d  "${OSInstaller}/Contents/SharedSupport" ]; then
-    echo "This installer looks like kind of 'stub' installer."
+    /bin/echo "This installer looks like kind of 'stub' installer."
     /usr/bin/du -sh "${OSInstaller}"
-    echo "Use full size intaller."
+    /bin/echo "Use full size intaller."
     exit 1
 fi
 
@@ -76,8 +76,8 @@ if [ -f "${OSInstaller}/Contents/SharedSupport/InstallESD.dmg" ]; then
     dmg="${OSInstaller}/Contents/SharedSupport/InstallESD.dmg"
     plist="${OSInstaller}/Contents/SharedSupport/InstallInfo.plist"
     if [ ! -f "$plist" ]; then
-        echo "Not found file: $plist"
-        echo "Unknown installer type."
+        /bin/echo "Not found file: $plist"
+        /bin/echo "Unknown installer type."
         exit 1
     fi
     osversion="$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "$plist")"
@@ -91,8 +91,8 @@ elif [ -f "${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg" ]; then
     plist_type=1100
     dmg="${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg"
     if [ ! -f "$dmg" ]; then
-        echo "Not found file: $plist"
-        echo "Unknown installer type."
+        /bin/echo "Not found file: $plist"
+        /bin/echo "Unknown installer type."
         exit 1
     fi
     osinfo="$(get_install_os_info "$dmg")"
@@ -104,8 +104,8 @@ elif [ -f "${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg" ]; then
     msg1="Would you need a dmg archive of $( basename "$OSInstaller" )?"
     msg2="Ok, creating dmg archive file of $( basename "$OSInstaller"). Wait few minutes."
 else
-    echo "Not found dmg file."
-    echo "This is not expected installer type."
+    /bin/echo "Not found dmg file."
+    /bin/echo "This is not expected installer type."
     exit 1
 fi
 
@@ -130,8 +130,8 @@ if [ "$plist_type" -lt 1100 ] && [ ! -x /usr/bin/pkgbuild ]; then
 fi
 
 read -r -p "$msg1 [y/n]: " ANS
-if [ "$ANS" != y ]; then rm -f  "$result_file"; exit 0; fi
-echo "$msg2"
+if [ "$ANS" != y ]; then /bin/rm -f  "$result_file"; exit 0; fi
+/bin/echo "$msg2"
 
 uuid="$( /usr/bin/uuidgen )"
 workdir="$(/usr/bin/mktemp -d)"
@@ -153,7 +153,7 @@ if [ "$plist_type" -lt 1100 ]; then
     fi
 
     if ! /usr/bin/pkgbuild --identifier "$PKGID" --root "${workdir}/root" "$installer_archive" > "/tmp/pkgbuid.$( /bin/date +%F_%H%M%S ).log" 2>&1 ; then
-        echo "FAILED. (See /tmp/pkgbuid.$( /bin/date +%F_%H%M%S ).log"
+        /bin/echo "FAILED. (See /tmp/pkgbuid.$( /bin/date +%F_%H%M%S ).log"
     fi
 else
     # https://www.jamf.com/jamf-nation/discussions/37294/package-big-sur-installer-with-composer-issue
@@ -175,9 +175,9 @@ else
     if /bin/cp -a "${OSInstaller%/}" "/Volumes/${volumename}/Applications" ; then
         /usr/bin/hdiutil detach "$devfile" > /dev/null
     else
-        echo "=== DEBUG ==="
+        /bin/echo "=== DEBUG ==="
         /bin/df -lH
-        echo "temp_dmg: $temp_dmg"
+        /bin/echo "temp_dmg: $temp_dmg"
         exit 1
     fi
 
@@ -189,4 +189,4 @@ else
 fi
 
 /bin/rm -rf "$workdir"
-echo "Done. See $output_dir"
+/bin/echo "Done. See $output_dir"
