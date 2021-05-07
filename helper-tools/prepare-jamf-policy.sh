@@ -164,7 +164,6 @@ else
     filesystem='APFS'
 
     if [ "$( /usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{ print ($1 * 10 ** 2 +  $2 )}' )" -lt 1015 ]; then
-        extra_size=512
         filesystem='JHFS+'
     fi
 
