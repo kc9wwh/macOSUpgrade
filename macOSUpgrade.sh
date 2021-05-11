@@ -2,7 +2,7 @@
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #
-# Copyright (c) 2020 Jamf.  All rights reserved.
+# Copyright (c) 2021 Jamf.  All rights reserved.
 #
 #       Redistribution and use in source and binary forms, with or without
 #       modification, are permitted provided that the following conditions are met:
@@ -49,7 +49,6 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # USER VARIABLES
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -57,7 +56,7 @@
 ## Specify path to OS installer – Use Parameter 4 in the JSS, or specify here.
 ## Parameter Label: Path to the macOS installer
 ## Example: /Applications/Install macOS High Sierra.app
-OSInstaller="$( echo "$4" | /usr/bin/xargs )"
+OSInstaller="$( /bin/echo "$4" | /usr/bin/xargs )"
 
 ## Version of Installer OS. Use Parameter 5 in the JSS, or specify here.
 ## Parameter Label: Version of macOS
@@ -76,7 +75,6 @@ if [ "$installerVersion_Full_Integer" -lt 110000 ]; then
     installerPlist="${OSInstaller}/Contents/SharedSupport/InstallInfo.plist"
 else
     installerDMG="${OSInstaller}/Contents/SharedSupport/SharedSupport.dmg"
-    installerPlist="${OSInstaller}/Contents/Info.plist"
 fi
 
 ## Custom Trigger used for download – Use Parameter 6 in the JSS, or specify here.
@@ -86,7 +84,7 @@ fi
 ## to relevant computers and/or users, or else the custom trigger will
 ## not be picked up. Use a separate policy for the script itself.
 ## Example trigger name: download-sierra-install
-download_trigger="$( echo "$6" | /usr/bin/xargs )"
+download_trigger="$( /bin/echo "$6" | /usr/bin/xargs )"
 
 ## MD5 Checksum of Installer dmg file – Use Parameter 7 in the JSS.
 ## Parameter Label: installESD Checksum (optional)
@@ -94,7 +92,7 @@ download_trigger="$( echo "$6" | /usr/bin/xargs )"
 ## Leave the variable BLANK if you do NOT want to verify the checksum (DEFAULT)
 ## Example Command: /sbin/md5 /Applications/Install\ macOS\ High\ Sierra.app/Contents/SharedSupport/InstallESD.dmg
 ## Example MD5 Checksum: b15b9db3a90f9ae8a9df0f81741efa2b
-installerDMGChecksum="$( echo "$7" | /usr/bin/xargs )"
+installerDMGChecksum="$( /bin/echo "$7" | /usr/bin/xargs )"
 if [ -n "$installerDMGChecksum" ]; then
     doCheckDMGchecksum=yes
 else
@@ -203,6 +201,37 @@ fi
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # FUNCTIONS
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+get_install_os_info() {
+    local dmg_file tmpfile osversion info_file devfile
+
+    dmg_file="$1"
+    if [ ! -f "$dmg_file" ]; then
+        /bin/echo "Not found: $dmg_file"
+        exit 1
+    fi
+    tmpfile="$( /usr/bin/mktemp )"
+
+    /usr/bin/hdiutil attach -mountrandom /Volumes -noverify -readonly -nobrowse "$dmg_file" > "$tmpfile"
+    devfile="$( /usr/bin/awk '$NF == "GUID_partition_scheme" {print $1}' "$tmpfile" )"
+    if [ -z "$devfile" ]; then
+        /bin/echo "failed to mount: $dmg_file"
+        /bin/rm -rf "$tmpfile"
+        exit 1
+    fi
+    mountpoint="$( /usr/bin/awk '$2 == "Apple_HFS" {print $3}' "$tmpfile" )"
+    if [ -z "$mountpoint" ]; then
+        /bin/echo "something changed. failed to get mount point"
+        /bin/rm -rf "$tmpfile"
+        exit 1
+    fi
+
+    info_file="${mountpoint}/com_apple_MobileAsset_MacSoftwareUpdate/com_apple_MobileAsset_MacSoftwareUpdate.xml"
+    osversion="$( /usr/libexec/PlistBuddy -c "print Assets:0:OSVersion" "$info_file" )"
+
+    /bin/rm -rf "$tmpfile"
+    /usr/bin/hdiutil detach "$devfile" > /dev/null 2>&1
+    /bin/echo "${osversion}"
+}
 
 kill_process() {
     processPID="$1"
@@ -223,7 +252,7 @@ wait_for_ac_power() {
             kill_process "$jamfHelperPowerPID"
             return
         fi
-        sleep 1
+        /bin/sleep 1
         ((acPowerWaitTimer--))
     done
     kill_process "$jamfHelperPowerPID"
@@ -233,7 +262,7 @@ wait_for_ac_power() {
 
 downloadInstaller() {
     if [ ! -x /usr/local/jamf/bin/jamf ]; then
-        echo "Not found: /usr/local/jamf/bin/jamf"
+        /bin/echo "Not found: /usr/local/jamf/bin/jamf"
         return
     fi
 
@@ -310,7 +339,7 @@ validate_free_space() {
     fi
 
     ## Check if free space > 20GB (install 10.12+) or 48GB (install 11.00)
-    requiredDiskSpaceSizeGB=$([ "$installerVersion_Major_Integer" -ge 1100 ] && /bin/echo "48" || /bin/echo "20")   	
+    requiredDiskSpaceSizeGB=$([ "$installerVersion_Major_Integer" -ge 1100 ] && /bin/echo "48" || /bin/echo "20")
     if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 ** 3 )) ]]; then
         /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
     else
@@ -388,15 +417,18 @@ maxTrialCount=3
 
 while [ "$loopCount" -lt "$maxTrialCount" ]; do
     if [ -d "$OSInstaller" ]; then
-        if [ -f "$installerPlist" ]; then
-            if [ "$installerVersion_Full_Integer" -lt 110000 ]; then
+        if [ "$installerVersion_Full_Integer" -lt 110000 ]; then
+            if [ -f "$installerPlist" ]; then
                 currentInstallerVersion=$(/usr/libexec/PlistBuddy -c "print 'System Image Info:version'" "$installerPlist")
             else
-                currentInstallerVersion=$(/usr/libexec/PlistBuddy -c "print DTPlatformVersion" "$installerPlist")
+                /bin/echo "Installer check: Not found $installerPlist."
             fi
         else
+            currentInstallerVersion=$(get_install_os_info "$installerDMG")
+        fi
+
+        if [ -z "$currentInstallerVersion" ]; then
             ((loopCount++))
-            /bin/echo "Installer check: Not found $installerPlist."
             /bin/echo "Try to download installer.app. ($loopCount / $maxTrialCount )"
             downloadInstaller
             continue
@@ -468,16 +500,16 @@ fi
 ## Wait until /var/db/.AppleUpgrade disappears
 while [ -e /var/db/.AppleUpgrade ];
 do
-	echo "\$(date "+%a %h %d %H:%M:%S"): Waiting for /var/db/.AppleUpgrade to disappear." >> /usr/local/jamfps/firstbootupgrade.log
-    sleep 60
+    echo "\$(date "+%a %h %d %H:%M:%S"): Waiting for /var/db/.AppleUpgrade to disappear." >> /usr/local/jamfps/firstbootupgrade.log
+    /bin/sleep 60
 done
 
 ## Wait until the upgrade process completes
 INSTALLER_PROGRESS_PROCESS=\$(pgrep -l "Installer Progress")
 until [ "\$INSTALLER_PROGRESS_PROCESS" = "" ];
 do
-	echo "\$(date "+%a %h %d %H:%M:%S"): Waiting for Installer Progress to complete." >> /usr/local/jamfps/firstbootupgrade.log
-    sleep 60
+    echo "\$(date "+%a %h %d %H:%M:%S"): Waiting for Installer Progress to complete." >> /usr/local/jamfps/firstbootupgrade.log
+    /bin/sleep 60
     INSTALLER_PROGRESS_PROCESS=\$(pgrep -l "Installer Progress")
 done
 ## Clean up files
