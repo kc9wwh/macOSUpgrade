@@ -400,7 +400,7 @@ cleanExit() {
     exit "$1"
 }
 
-isSystemRequirementErrors() {
+check_system_requirement() {
     ## Don't waste the users time, exit here if system requirements are not met
     if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
         /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
@@ -443,7 +443,7 @@ fvStatus=$( /usr/bin/fdesetup status | /usr/bin/head -1 )
 ## Run system requirement checks
 validate_power_status
 validate_free_space "$installerVersion_Major_Integer" "$OSInstaller"
-isSystemRequirementErrors
+check_system_requirement
 
 ## Check for existing OS installer
 loopCount=0
@@ -521,7 +521,7 @@ fi
 /bin/echo "Run system requirement checks again"
 validate_power_status
 validate_free_space "$installerVersion_Major_Integer" "$OSInstaller"
-isSystemRequirementErrors
+check_system_requirement
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # CREATE FIRST BOOT SCRIPT
