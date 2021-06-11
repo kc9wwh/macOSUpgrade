@@ -320,31 +320,63 @@ validate_power_status() {
 }
 
 validate_free_space() {
-    local installerVersion diskInfoPlist freeSpace requiredDiskSpaceSizeGB installerPath installerSizeBytes
+    local diskInfoPlist estInstallerSizeBytes freeSpace installerPath installerVersion \
+        localOSVersion noInstallerMsg requiredDiskSpaceSizeGB
 
     installerVersion="$1"
     installerPath="$2"
+    noInstallerMsg="."
+    localOSVersion="$(/usr/bin/sw_vers -productVersion | /usr/bin/awk -F. '{ print ($1 * 10 ** 2 + $2)}')"
 
     diskInfoPlist=$(/usr/sbin/diskutil info -plist /)
-    ## 10.13.4 or later, diskutil info command output changes key from 'AvailableSpace' to 'Free Space' about disk space.
-    ## 10.15.0 or later, diskutil info command output changes key from 'APFSContainerFree' to 'Free Space' about disk space.
+    # 10.13.4 or later, diskutil info command output changes key from 'AvailableSpace'
+    # to 'Free Space' about disk space.
+    # 10.15.0 or later, diskutil info command output changes key from 'APFSContainerFree'
+    # to 'Free Space' about disk space.
     freeSpace=$(
-    /usr/libexec/PlistBuddy -c "Print :APFSContainerFree" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :FreeSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :AvailableSpace" /dev/stdin <<< "$diskInfoPlist" 2>/dev/null
+        /usr/libexec/PlistBuddy -c "Print :APFSContainerFree" /dev/stdin <<<"$diskInfoPlist" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Print :FreeSpace" /dev/stdin <<<"$diskInfoPlist" 2>/dev/null \
+            || /usr/libexec/PlistBuddy -c "Print :AvailableSpace" /dev/stdin <<<"$diskInfoPlist" 2>/dev/null
     )
 
-    ## The free space calculation also includes the installer, so it is excluded.
-    if [ -e "$installerPath" ]; then
-        installerSizeBytes=$(/usr/bin/du -s "$installerPath" | /usr/bin/awk '{print $1}' | /usr/bin/xargs)
-        freeSpace=$((freeSpace + installerSizeBytes))
+    if [ "$installerVersion" -ge 1100 ]; then
+        estInstallerSizeBytes=$(( 13 * 1000 ** 3 ))
+        # macOS Big Sur or later (version 11.0~)
+        # https://support.apple.com/HT211238
+        if [ "$localOSVersion" -ge 1012 ]; then
+            # Mac OS X 10.12 Sierra or later
+            requiredDiskSpaceSizeGB=36
+        else
+            requiredDiskSpaceSizeGB=45
+        fi
+    elif [ "$installerVersion" -ge 1015 ]; then
+        estInstallerSizeBytes=$(( 9 * 1000 ** 3 ))
+        # macOS Catalina or earlier (version ~10.15)
+        # https://support.apple.com/HT210222
+        if [ "$localOSVersion" -le 1010 ]; then
+            # Mac OS X 10.10 Yosemite or earlier
+            requiredDiskSpaceSizeGB=19
+        else
+            requiredDiskSpaceSizeGB=13
+        fi
+    elif [ "$installerVersion" -ge 1014 ]; then
+        estInstallerSizeBytes=$(( 7 * 1000 ** 3 ))
+        # macOS Mojave or earlier (version ~10.14)
+        # https://support.apple.com/kb/SP777
+        requiredDiskSpaceSizeGB=13
     fi
 
-    ## Check if free space > 20GB (install 10.12+) or 48GB (install 11.00)
-    requiredDiskSpaceSizeGB=$([ "$installerVersion_Major_Integer" -ge 1100 ] && /bin/echo "48" || /bin/echo "20")
-    if [[ ${freeSpace%.*} -ge $(( requiredDiskSpaceSizeGB * 1000 ** 3 )) ]]; then
-        /bin/echo "Disk Check: OK - ${freeSpace%.*} Bytes Free Space Detected"
+    # The free space calculation sbutract the installer size when it is not installed yet.
+    if [ ! -e "$installerPath" ]; then
+        freeSpace=$((freeSpace - estInstallerSizeBytes))
+        noInstallerMsg=" with the installer installed. Additinal about $(( estInstallerSizeBytes / 1000 ** 3 )) GB required."
+    fi
+
+    if [ "$freeSpace" -ge "$((requiredDiskSpaceSizeGB * 1000 ** 3))" ]; then
+        /bin/echo "Disk Check: OK - $((freeSpace / 1000 ** 3)) GB Free Space Detected"
     else
-        sysRequirementErrors+=("Has at least ${requiredDiskSpaceSizeGB}GB of Free Space")
-        /bin/echo "Disk Check: ERROR - ${freeSpace%.*} Bytes Free Space Detected"
+        sysRequirementErrors+=("Has at least ${requiredDiskSpaceSizeGB}GB of Free Space${noInstallerMsg}")
+        /bin/echo "Disk Check: ERROR - $((freeSpace / 1000 ** 3)) GB Free Space Detected. $requiredDiskSpaceSizeGB GB more free space recommended${noInstallerMsg}"
     fi
 }
 
@@ -366,6 +398,24 @@ cleanExit() {
     /bin/rm -f "$osinstallersetupdDaemonSettingsFilePath"
     /bin/rm -f "$osinstallersetupdAgentSettingsFilePath"
     exit "$1"
+}
+
+check_system_requirement() {
+    ## Don't waste the users time, exit here if system requirements are not met
+    if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
+        /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
+        /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
+            -windowType utility \
+            -title "$title" -icon "$errorIcon" \
+            -iconSize 100 -button1 "OK" -defaultButton 1 \
+            -heading "Requirements Not Met" \
+            -description "We were unable to prepare your computer for $macOSname. Please ensure your computer meets the following requirements:
+
+$(/usr/bin/printf '\t• %s\n' "${sysRequirementErrors[@]}")
+
+If you continue to experience this issue, please contact the IT Support Center."
+        cleanExit 1
+    fi
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -393,22 +443,7 @@ fvStatus=$( /usr/bin/fdesetup status | /usr/bin/head -1 )
 ## Run system requirement checks
 validate_power_status
 validate_free_space "$installerVersion_Major_Integer" "$OSInstaller"
-
-## Don't waste the users time, exit here if system requirements are not met
-if [[ "${#sysRequirementErrors[@]}" -ge 1 ]]; then
-    /bin/echo "Launching jamfHelper Dialog (Requirements Not Met)..."
-    /Library/Application\ Support/JAMF/bin/jamfHelper.app/Contents/MacOS/jamfHelper \
-        -windowType utility \
-        -title "$title" -icon "$errorIcon" \
-        -iconSize 100 -button1 "OK" -defaultButton 1 \
-        -heading "Requirements Not Met" \
-        -description "We were unable to prepare your computer for $macOSname. Please ensure your computer meets the following requirements:
-
-$( /usr/bin/printf '\t• %s\n' "${sysRequirementErrors[@]}" )
-
-If you continue to experience this issue, please contact the IT Support Center."
-    cleanExit 1
-fi
+check_system_requirement
 
 ## Check for existing OS installer
 loopCount=0
@@ -482,6 +517,11 @@ if [ "$unsuccessfulDownload" -eq 1 ]; then
         -description "We were unable to prepare your computer for $macOSname. Please contact the IT Support Center."
     cleanExit 0
 fi
+
+/bin/echo "Run system requirement checks again"
+validate_power_status
+validate_free_space "$installerVersion_Major_Integer" "$OSInstaller"
+check_system_requirement
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # CREATE FIRST BOOT SCRIPT
