@@ -339,7 +339,17 @@ validate_free_space() {
             || /usr/libexec/PlistBuddy -c "Print :AvailableSpace" /dev/stdin <<<"$diskInfoPlist" 2>/dev/null
     )
 
-    if [ "$installerVersion" -ge 1100 ]; then
+    if [ "$installerVersion" -ge 1200 ]; then
+        estInstallerSizeBytes=$(( 13 * 1000 ** 3 ))
+        # macOS Monterey or later (version 12.0~)
+        # https://support.apple.com/en-us/HT212735
+        if [ "$localOSVersion" -ge 1012 ]; then
+            # Mac OS X 10.12 Sierra or later
+            requiredDiskSpaceSizeGB=26
+        else
+            requiredDiskSpaceSizeGB=45
+        fi
+    elif [ "$installerVersion" -ge 1100 ]; then
         estInstallerSizeBytes=$(( 13 * 1000 ** 3 ))
         # macOS Big Sur or later (version 11.0~)
         # https://support.apple.com/HT211238
@@ -366,10 +376,10 @@ validate_free_space() {
         requiredDiskSpaceSizeGB=13
     fi
 
-    # The free space calculation sbutract the installer size when it is not installed yet.
+    # The free space calculation subtracts the installer size when it is not installed yet.
     if [ ! -e "$installerPath" ]; then
         freeSpace=$((freeSpace - estInstallerSizeBytes))
-        noInstallerMsg=" with the installer installed. Additinal about $(( estInstallerSizeBytes / 1000 ** 3 )) GB required."
+        noInstallerMsg=" with the installer installed. Additional about $(( estInstallerSizeBytes / 1000 ** 3 )) GB required."
     fi
 
     if [ "$freeSpace" -ge "$((requiredDiskSpaceSizeGB * 1000 ** 3))" ]; then
