@@ -644,9 +644,6 @@ fi
 # APPLICATION
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-#Enabling job control to ensure all following processes run in a separate process group
-set -m
-
 ## Launch jamfHelper
 jamfHelperPID=""
 if [ "$userDialog" -eq 0 ]; then
@@ -714,8 +711,5 @@ eval "$startosinstallCommand"
 if [ "$ShowLogFile" = "yes" ]; then
     launchctl asuser "$( id -u "$3" )" /usr/bin/open "${osinstallLogfile}"
 fi
-
-#Disabling job control
-set +m
 
 exit 0
